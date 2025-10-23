@@ -105,10 +105,11 @@ async def monitor_dom(page_id, url=None, port=9222, selector=None, poll_interval
 
         # Track previous values to detect changes
         previous_state = {}
+        is_first_run = True
         start_time = asyncio.get_event_loop().time()
 
         async def poll_values():
-            nonlocal msg_id, previous_state
+            nonlocal msg_id, previous_state, is_first_run
 
             while True:
                 # Check duration
@@ -144,6 +145,16 @@ async def monitor_dom(page_id, url=None, port=9222, selector=None, poll_interval
                             current_state = {}
                             changes_detected = False
 
+                            # First run - output initial state before processing
+                            if is_first_run:
+                                print(json.dumps({
+                                    'event': 'initial_state',
+                                    'timestamp': data['timestamp'],
+                                    'count': data['count'],
+                                    'fields': data['fields']
+                                }), flush=True)
+                                is_first_run = False
+
                             for field in data['fields']:
                                 # Create a unique key for this field
                                 key = f"{field.get('name', '')}:{field.get('id', '')}:{field.get('type', '')}"
@@ -151,7 +162,7 @@ async def monitor_dom(page_id, url=None, port=9222, selector=None, poll_interval
 
                                 current_state[key] = current_value
 
-                                # Detect changes
+                                # Detect changes (skip on first run since we already reported initial state)
                                 if key in previous_state:
                                     if previous_state[key] != current_value:
                                         changes_detected = True
@@ -163,8 +174,8 @@ async def monitor_dom(page_id, url=None, port=9222, selector=None, poll_interval
                                             'new_value': current_value
                                         }), flush=True)
                                 else:
-                                    # New field detected
-                                    if current_value:  # Only report if it has a value
+                                    # New field detected (only if not first run)
+                                    if current_value and previous_state:  # Only report if it has a value and not first run
                                         changes_detected = True
                                         print(json.dumps({
                                             'event': 'field_detected',
@@ -174,18 +185,6 @@ async def monitor_dom(page_id, url=None, port=9222, selector=None, poll_interval
 
                             # Update state
                             previous_state = current_state
-
-                            # If no changes but first run, output initial state
-                            if not changes_detected and len(previous_state) == len(data['fields']) and all(k in previous_state for k in current_state):
-                                pass  # Silent polling, no changes
-                            elif not previous_state:
-                                # First run - output all fields
-                                print(json.dumps({
-                                    'event': 'initial_state',
-                                    'timestamp': data['timestamp'],
-                                    'count': data['count'],
-                                    'fields': data['fields']
-                                }), flush=True)
 
                         break
 

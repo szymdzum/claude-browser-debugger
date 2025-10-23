@@ -51,7 +51,7 @@ error_exit() {
     local recovery="$3"
     local exit_code="${4:-1}"
 
-    jq -n \
+    jq -nc \
         --arg status "error" \
         --arg code "$code" \
         --arg message "$message" \
@@ -255,22 +255,15 @@ echo "Page ID: $PAGE_ID" >&2
 # Build WebSocket URL
 WS_URL="ws://localhost:$RESOLVED_PORT/devtools/page/$PAGE_ID"
 
-# Output success JSON
-jq -n \
+# Output success JSON (compact, single line)
+jq -nc \
     --arg status "success" \
     --argjson port "$RESOLVED_PORT" \
     --argjson pid "$CHROME_PID" \
     --arg page_id "$PAGE_ID" \
     --arg profile "$RESOLVED_PROFILE" \
     --arg ws_url "$WS_URL" \
-    '{
-        status: $status,
-        port: $port,
-        pid: $pid,
-        page_id: $page_id,
-        profile: $profile,
-        ws_url: $ws_url
-    }' >&1
+    '{status:$status,port:$port,pid:$pid,page_id:$page_id,profile:$profile,ws_url:$ws_url}' >&1
 
 echo "Chrome launched successfully" >&2
 exit 0
