@@ -64,13 +64,19 @@ What API calls does https://example.com make?
 
 Claude will automatically use this skill when appropriate.
 
+### Structured summaries on demand
+
+Use `debug-orchestrator.sh --summary=json` to emit a machine-readable JSON report alongside the text summary. Pass `--summary=both` to keep the default text and add JSON for downstream tooling.
+
 ## What gets installed
 
 ```
 ~/.claude/skills/browser-debugger/
 ├── SKILL.md           # Skill instructions
 ├── cdp-console.py     # Console monitoring
-└── cdp-network.py     # Network monitoring
+├── cdp-network.py     # Network monitoring
+├── cdp-network-with-body.py  # Network monitoring + response bodies
+└── debug-orchestrator.sh     # Wrapper script with summaries
 ```
 
 ## Manual testing
@@ -107,6 +113,8 @@ Monitor HTTP requests, responses, and failures.
 - `SKILL.md` - Core skill documentation (Claude reads this)
 - `cdp-console.py` - Console monitoring via WebSocket
 - `cdp-network.py` - Network monitoring via WebSocket
+- `cdp-network-with-body.py` - Optional response body capture
+- `debug-orchestrator.sh` - Chrome launcher + summary generator
 - `install.sh` - Automated installer
 - `README.md` - This file
 

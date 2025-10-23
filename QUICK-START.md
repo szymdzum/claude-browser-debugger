@@ -5,7 +5,9 @@
 Debug any page with network monitoring in one command:
 
 ```bash
-.claude/skills/browser-debugger/debug-orchestrator.sh "http://localhost:3000/customer/register?redirectTo=%2F"
+.claude/skills/browser-debugger/debug-orchestrator.sh \
+  "http://localhost:3000/customer/register?redirectTo=%2F" \
+  --summary=both
 ```
 
 That's it! The script will:
@@ -22,7 +24,8 @@ That's it! The script will:
 ```bash
 .claude/skills/browser-debugger/debug-orchestrator.sh \
   "http://localhost:3000/customer/register?redirectTo=%2F" \
-  10
+  10 \
+  --summary=json
 ```
 
 ### Debug checkout with custom log file
@@ -56,6 +59,7 @@ The script automatically analyzes and shows:
 - **HTTP status codes** (200, 404, 500, etc.)
 - **Failed requests** with error messages
 - **Top 10 requests** with URLs
+- **Optional JSON summary** with counts, hosts, status breakdown
 
 ## 🔍 Manual Usage (Advanced)
 
@@ -116,13 +120,14 @@ grep 'event.*failed' /tmp/page-debug.log
 ## ⚙️ Parameters
 
 ```bash
-debug-orchestrator.sh <URL> [duration] [output-file] [--filter=pattern]
+debug-orchestrator.sh <URL> [duration] [output-file] [--filter=pattern] [--summary=text|json|both]
 ```
 
 - **URL** (required): The page to debug
 - **duration** (optional): How long to monitor in seconds (default: 10)
 - **output-file** (optional): Where to save logs (default: /tmp/page-debug.log)
 - **--filter=pattern** (optional): Capture response bodies for URLs matching pattern
+- **--summary=...** (optional): Choose `text` (default), `json`, or `both`
 
 ### Filter Mode
 
