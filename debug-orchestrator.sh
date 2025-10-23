@@ -4,10 +4,10 @@
 #        [--summary=text|json|both] [--include-console] [--console-log=path] [--idle=seconds]
 #
 # Examples:
-#   ./debug-orchestrator.sh "http://localhost:3000/customer/register?redirectTo=%2F" --summary=both
-#   ./debug-orchestrator.sh "http://localhost:3000/login" 10 --include-console --idle=2
-#   ./debug-orchestrator.sh "http://localhost:3000/checkout" 15 /tmp/checkout.log --summary=json
-#   ./debug-orchestrator.sh "http://localhost:3000/register" 15 /tmp/out.log --filter=marketingChannels --include-console
+#   ./debug-orchestrator.sh "https://example.com/register" --summary=both
+#   ./debug-orchestrator.sh "https://demo.example/login" 10 --include-console --idle=2
+#   ./debug-orchestrator.sh "https://shop.example/checkout" 15 /tmp/checkout.log --summary=json
+#   ./debug-orchestrator.sh "https://api.example/data" 15 /tmp/out.log --filter=marketing --include-console
 
 set -e
 
@@ -16,9 +16,9 @@ if [ -z "$1" ]; then
     echo "Usage: $0 <URL> [duration] [output-file]"
     echo ""
     echo "Examples:"
-    echo "  $0 'http://localhost:3000/customer/register?redirectTo=%2F'"
-    echo "  $0 'http://localhost:3000/login' 10"
-    echo "  $0 'http://localhost:3000/checkout' 15 /tmp/checkout-debug.log"
+    echo "  $0 'https://example.com/register'"
+    echo "  $0 'https://demo.example/login' 10"
+    echo "  $0 'https://shop.example/checkout' 15 /tmp/checkout-debug.log"
     exit 1
 fi
 
