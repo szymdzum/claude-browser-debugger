@@ -123,6 +123,7 @@ Avoid hard-coded durations by passing `--idle=<seconds>`; the monitors exit once
 - `cdp-network.py` - Network monitoring via WebSocket
 - `cdp-network-with-body.py` - Optional response body capture
 - `debug-orchestrator.sh` - Chrome launcher + summary generator
+- `summarize.py` - Shared summary formatter for network/console logs
 - `install.sh` - Automated installer
 - `README.md` - This file
 
