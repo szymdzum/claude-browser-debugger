@@ -127,20 +127,19 @@ Output format:
 
 ## Quick Start: Headed Mode (Interactive Debugging)
 
-**NEW**: Launch a visible Chrome window that you can interact with while monitoring changes:
+**NEW**: Launch a visible Chrome window that stays open for manual interaction:
 
 ```bash
 ./debug-orchestrator.sh "http://localhost:3000/signin" \
   --mode=headed \
-  --include-console \
-  --idle=30
+  --include-console
 ```
 
 This will:
 - Open a **visible Chrome window** showing the page
+- **Stays open indefinitely** - no automatic timeout (close manually when done)
 - You can **type, click, and interact** normally
 - Console logs and network activity are captured in real-time
-- Automatically stops after 30 seconds of inactivity
 - Uses persistent profile at `~/.chrome-debug-profile`
 
 **Use cases:**
@@ -148,6 +147,8 @@ This will:
 - Debugging pages that require manual authentication
 - Watching real-time form validation
 - Testing workflows that need human interaction
+
+**Note:** For headed mode, do NOT use `--idle` timeout unless you specifically want auto-close behavior. The browser should stay open for interactive debugging.
 
 ## Recommended Workflow (One-Command Orchestrator)
 
