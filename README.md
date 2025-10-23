@@ -2,6 +2,13 @@
 
 Debug websites using Chrome headless and Chrome DevTools Protocol. Extract DOM, monitor console logs, and track network requests.
 
+## Why This Exists
+
+- Provides a lightweight alternative to Chrome Dev MCP for gathering quick page context without burning large MCP token budgets.
+- Avoids heavier stacks like Selenium; depends only on a local headless Chrome session and the CDP websocket.
+- Focuses on the essentials agents usually need: rendered DOM, console output, and network traffic.
+- Intended as a complementary tool—keep Chrome Dev MCP for deep, interactive debugging, but reach for this when you just need fast telemetry to answer a question.
+
 ## Quick Install
 
 ```bash
