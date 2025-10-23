@@ -19,17 +19,33 @@ This skill enables you to inspect and debug websites using Chrome with the Chrom
 
 Required tools and packages:
 
-- **Python 3.7+** (usually pre-installed)
-- **websockets library**: `pip3 install websockets --break-system-packages`
+- **Python 3.x** with **websockets library**: `pip3 install websockets --break-system-packages`
 - **Chrome or Chromium** browser
 - **jq**: For JSON parsing (install with `brew install jq` on macOS or `apt-get install jq` on Linux)
 - **curl**: Usually pre-installed
+
+### Chrome 136+ Requirement (IMPORTANT)
+
+⚠️ **Chrome 136+ (March 2025) requires `--user-data-dir` for headed mode CDP.**
+
+The orchestrator and launcher scripts handle this automatically. If you're launching Chrome manually:
+
+```bash
+# ❌ WRONG (Chrome 136+ blocks CDP on default profile)
+chrome --remote-debugging-port=9222 URL
+
+# ✅ CORRECT (Works with Chrome 136+)
+chrome --user-data-dir=~/.chrome-debug-profile --remote-debugging-port=9222 URL
+```
+
+**Why:** Chrome 136+ security policy blocks CDP access to your default user profile to prevent cookie/credential theft. See `docs/headed-mode/CHROME-136-CDP-INCIDENT.md` for details.
 
 Verify installation:
 ```bash
 python3 --version
 python3 -c "import websockets; print('websockets installed')"
 jq --version
+chrome --version  # Check if Chrome 136+
 ```
 
 ## Instructions
@@ -339,3 +355,75 @@ debug-orchestrator.sh "$URL" 15 /tmp/network.log --include-console --summary=bot
 # Cleanup
 pkill -f "chrome.*9222"
 ```
+
+## Documentation & Testing
+
+### Documentation Structure
+
+Comprehensive documentation is available in `docs/`:
+
+- **`docs/headed-mode/CHROME-136-CDP-INCIDENT.md`** - Chrome 136+ security change that requires `--user-data-dir` for headed mode. Includes investigation timeline, test results, and solution details.
+- **`docs/headed-mode/INTERACTIVE_WORKFLOW_DESIGN.md`** - Headed mode workflow design and user interaction patterns.
+- **`docs/headed-mode/LAUNCHER_CONTRACT.md`** - chrome-launcher.sh API specification, JSON output format, and error codes.
+
+### Testing & Diagnostics
+
+#### Smoke Test
+
+Validate headed Chrome CDP functionality after Chrome updates:
+
+```bash
+./tests/smoke-test-headed.sh
+```
+
+**What it tests:**
+- Chrome version detection (warns if Chrome 136+)
+- Headed launch with proper `--user-data-dir`
+- CDP endpoint availability
+- Runtime.evaluate functionality
+- DOM access
+- Auto-cleanup
+
+**Expected output:**
+```
+✓ All tests passed!
+
+Summary:
+  Chrome Version: Google Chrome 141.0.7390.109
+  CDP Port: 9999
+  Runtime.evaluate: ✓
+  DOM Access: ✓
+```
+
+#### Diagnostic Script
+
+For troubleshooting CDP connection issues:
+
+```bash
+# Get page ID first
+PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
+
+# Run diagnostic with full logging
+PYTHONASYNCIODEBUG=1 python3 scripts/diagnostics/debug-cdp-connection.py $PAGE_ID 9222
+```
+
+**Shows:**
+- Step-by-step WebSocket connection flow
+- Exact point where Chrome stops responding (if any)
+- Full async debug logs
+- WebSocket handshake details
+
+### Common Issues
+
+**Issue: Headed mode hangs indefinitely**
+
+**Cause:** Chrome 136+ requires `--user-data-dir` for CDP access.
+
+**Solution:** Ensure you're using `chrome-launcher.sh` or `debug-orchestrator.sh`, which handle this automatically. If launching Chrome manually, always include `--user-data-dir`:
+
+```bash
+chrome --user-data-dir=~/.chrome-debug-profile --remote-debugging-port=9222 URL
+```
+
+**See:** `docs/headed-mode/CHROME-136-CDP-INCIDENT.md` for full details.
+

@@ -1,6 +1,6 @@
 # Browser Debugger Skill for Claude Code
 
-Debug websites using Chrome headless and Chrome DevTools Protocol. Extract DOM, monitor console logs, and track network requests.
+Debug websites using Chrome (headless or headed) through the Chrome DevTools Protocol. Launch a visible browser for interactive workflows or keep things headless for automation while you extract DOM snapshots, monitor console logs, and track network requests.
 
 ## Why This Exists
 
@@ -74,11 +74,25 @@ Claude will automatically use this skill when appropriate.
 
 ```
 ~/.claude/skills/browser-debugger/
-├── SKILL.md           # Skill instructions
-├── cdp-console.py     # Console monitoring
-├── cdp-network.py     # Network monitoring
-├── cdp-network-with-body.py  # Network monitoring + response bodies
-└── debug-orchestrator.sh     # Wrapper script with summaries
+├── SKILL.md                     # Agent-facing instructions (updated for headed mode + Chrome 136 policy)
+├── README.md                    # Maintainer guide
+├── chrome-launcher.sh           # Smart launcher (headed/headless, profile isolation, JSON contract)
+├── debug-orchestrator.sh        # Top-level workflow with summaries and mode selection
+├── cdp-console.py               # Console monitor (configurable port, idle timeout)
+├── cdp-network.py               # Network monitor
+├── cdp-network-with-body.py     # Network monitor with selective response bodies
+├── cdp-dom-monitor.py           # DOM/form-field change monitor
+├── summarize.py                 # Shared post-run summariser
+├── docs/
+│   └── headed-mode/
+│       ├── CHROME-136-CDP-INCIDENT.md     # Chrome 136 security change + investigation
+│       ├── INTERACTIVE_WORKFLOW_DESIGN.md # Headed workflow design notes
+│       └── LAUNCHER_CONTRACT.md           # chrome-launcher.sh API contract
+├── scripts/
+│   └── diagnostics/
+│       └── debug-cdp-connection.py        # Verbose CDP troubleshooting helper
+└── tests/
+    └── smoke-test-headed.sh               # CI/local smoke test for headed Chrome CDP
 ```
 
 ## Manual testing
@@ -101,31 +115,24 @@ pkill -f "chrome.*9222"
 
 ## Capabilities
 
-### Extract DOM
-Get the fully rendered HTML structure after JavaScript execution.
-
-### Monitor Console
-Capture JavaScript logs, errors, warnings, and exceptions in real-time.
-
-### Track Network
-Monitor HTTP requests, responses, and failures.
-
-### Unified Console + Network Sessions
-Run the orchestrator with `--include-console` to launch both monitors together and surface console levels in the final summary/log bundle.
-
-### Smart Idle Detection
-Avoid hard-coded durations by passing `--idle=<seconds>`; the monitors exit once CDP traffic has been quiet for that long (with the original duration acting as a safety ceiling).
+- **Headless & headed Chrome support** (headed mode uses an isolated profile so Chrome 136+ keeps answering CDP calls).
+- **DOM snapshots & live form monitoring** via `cdp-dom-monitor.py`.
+- **Console + network capture** with idle detection and optional response bodies.
+- **Smart orchestration**: `debug-orchestrator.sh` launches Chrome, hands off to collectors, aggregates results, and emits recovery hints when launch fails.
+- **Diagnostics & smoke tests** to catch regressions after Chrome updates (`scripts/diagnostics/debug-cdp-connection.py`, `tests/smoke-test-headed.sh`).
 
 ## Files
 
-- `SKILL.md` - Core skill documentation (Claude reads this)
-- `cdp-console.py` - Console monitoring via WebSocket
-- `cdp-network.py` - Network monitoring via WebSocket
-- `cdp-network-with-body.py` - Optional response body capture
-- `debug-orchestrator.sh` - Chrome launcher + summary generator
-- `summarize.py` - Shared summary formatter for network/console logs
-- `install.sh` - Automated installer
-- `README.md` - This file
+- `chrome-launcher.sh` – launches Chrome in headless/headed modes, returns JSON contract, enforces `--user-data-dir`.
+- `debug-orchestrator.sh` – wraps the launcher, starts collectors, summarises output.
+- `cdp-console.py`, `cdp-network.py`, `cdp-network-with-body.py` – CDP collectors (shared with orchestrator).
+- `cdp-dom-monitor.py` – live DOM/form-field watcher.
+- `summarize.py` – shared summary formatter.
+- `scripts/diagnostics/debug-cdp-connection.py` – verbose troubleshooting helper.
+- `tests/smoke-test-headed.sh` – regression test for Chrome 136+ headed sessions.
+- `docs/headed-mode/*` – design notes, launcher contract, and the Chrome 136 incident report.
+- `SKILL.md` – agent-facing skill guide (kept in sync with the changes above).
+- `README.md`, `install.sh` – maintainer info and installer.
 
 ## Troubleshooting
 
@@ -151,6 +158,18 @@ pkill -f "chrome.*9222"
 rm -rf ~/.claude/skills/browser-debugger
 ```
 
-## Documentation
+## Documentation & Testing
 
-See `SKILL.md` for complete instructions and examples.
+- `SKILL.md` – primary entry point for agents (now covers headed mode and Chrome 136 requirements).
+- `docs/headed-mode/CHROME-136-CDP-INCIDENT.md` – deep dive into the headed-mode incident and resolution.
+- `docs/headed-mode/INTERACTIVE_WORKFLOW_DESIGN.md` – design for interactive workflows.
+- `docs/headed-mode/LAUNCHER_CONTRACT.md` – chrome-launcher.sh CLI/JSON contract.
+- `tests/smoke-test-headed.sh` – quick validation that headed mode still works after Chrome updates.
+
+Run the smoke test locally after updating Chrome:
+
+```bash
+./tests/smoke-test-headed.sh
+```
+
+It verifies Chrome version detection, `--user-data-dir` behaviour, a simple `Runtime.evaluate`, and DOM access, then tears everything down.
