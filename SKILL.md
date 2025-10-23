@@ -1,33 +1,51 @@
 ---
 name: Browser Debugger
-description: Inspect websites using Chrome headless and Chrome DevTools Protocol. Extract DOM structure, monitor JavaScript console logs, and track network requests. Use when debugging websites, checking for JavaScript errors, monitoring API calls, analyzing network activity, or inspecting page structure.
+description: Inspect websites using Chrome (headless or headed) and Chrome DevTools Protocol. Extract DOM structure, monitor JavaScript console logs, track network requests, and interact with live pages. Use when debugging websites, checking for JavaScript errors, monitoring API calls, analyzing network activity, inspecting page structure, or testing form interactions in real-time.
 ---
 
 # Browser Debugger
 
-This skill enables you to inspect and debug websites using Chrome's headless mode and the Chrome DevTools Protocol (CDP).
+This skill enables you to inspect and debug websites using Chrome with the Chrome DevTools Protocol (CDP). Supports both headless mode (automated testing) and headed mode (interactive debugging with visible browser).
 
 ## What this skill does
 
 - **Extract DOM**: Get the fully rendered HTML structure after JavaScript execution
 - **Monitor Console**: Capture JavaScript console logs, errors, warnings, and exceptions
 - **Track Network**: Monitor HTTP requests, responses, and failures in real-time
+- **Headed Mode (NEW)**: Launch visible Chrome window for interactive debugging
+- **Real-time Form Monitoring**: Watch form field changes as users type
 
 ## Prerequisites
 
 Required tools and packages:
 
-- **Python 3.7+** (usually pre-installed)
-- **websockets library**: `pip3 install websockets --break-system-packages`
+- **Python 3.x** with **websockets library**: `pip3 install websockets --break-system-packages`
 - **Chrome or Chromium** browser
 - **jq**: For JSON parsing (install with `brew install jq` on macOS or `apt-get install jq` on Linux)
 - **curl**: Usually pre-installed
+
+### Chrome 136+ Requirement (IMPORTANT)
+
+⚠️ **Chrome 136+ (March 2025) requires `--user-data-dir` for headed mode CDP.**
+
+The orchestrator and launcher scripts handle this automatically. If you're launching Chrome manually:
+
+```bash
+# ❌ WRONG (Chrome 136+ blocks CDP on default profile)
+chrome --remote-debugging-port=9222 URL
+
+# ✅ CORRECT (Works with Chrome 136+)
+chrome --user-data-dir=~/.chrome-debug-profile --remote-debugging-port=9222 URL
+```
+
+**Why:** Chrome 136+ security policy blocks CDP access to your default user profile to prevent cookie/credential theft. See `docs/headed-mode/CHROME-136-CDP-INCIDENT.md` for details.
 
 Verify installation:
 ```bash
 python3 --version
 python3 -c "import websockets; print('websockets installed')"
 jq --version
+chrome --version  # Check if Chrome 136+
 ```
 
 ## Instructions
@@ -107,13 +125,44 @@ Output format:
 {"event":"failed","errorText":"net::ERR_CONNECTION_REFUSED","requestId":"..."}
 ```
 
+## Quick Start: Headed Mode (Interactive Debugging)
+
+**NEW**: Launch a visible Chrome window that you can interact with while monitoring changes:
+
+```bash
+./debug-orchestrator.sh "http://localhost:3000/signin" \
+  --mode=headed \
+  --include-console \
+  --idle=30
+```
+
+This will:
+- Open a **visible Chrome window** showing the page
+- You can **type, click, and interact** normally
+- Console logs and network activity are captured in real-time
+- Automatically stops after 30 seconds of inactivity
+- Uses persistent profile at `~/.chrome-debug-profile`
+
+**Use cases:**
+- Testing form interactions (login, signup, checkout)
+- Debugging pages that require manual authentication
+- Watching real-time form validation
+- Testing workflows that need human interaction
+
 ## Recommended Workflow (One-Command Orchestrator)
 
 `debug-orchestrator.sh` coordinates Chrome, the CDP collectors, and post-run summaries. Use it whenever you need full telemetry in one go.
 
+**Headless mode** (automated, no UI):
 ```bash
 ./debug-orchestrator.sh "https://example.com/login" 20 /tmp/example.log \
   --include-console --summary=both --idle=3
+```
+
+**Headed mode** (visible browser):
+```bash
+./debug-orchestrator.sh "http://localhost:3000/checkout" 20 /tmp/checkout.log \
+  --mode=headed --include-console --summary=both
 ```
 
 What you get:
@@ -306,3 +355,75 @@ debug-orchestrator.sh "$URL" 15 /tmp/network.log --include-console --summary=bot
 # Cleanup
 pkill -f "chrome.*9222"
 ```
+
+## Documentation & Testing
+
+### Documentation Structure
+
+Comprehensive documentation is available in `docs/`:
+
+- **`docs/headed-mode/CHROME-136-CDP-INCIDENT.md`** - Chrome 136+ security change that requires `--user-data-dir` for headed mode. Includes investigation timeline, test results, and solution details.
+- **`docs/headed-mode/INTERACTIVE_WORKFLOW_DESIGN.md`** - Headed mode workflow design and user interaction patterns.
+- **`docs/headed-mode/LAUNCHER_CONTRACT.md`** - chrome-launcher.sh API specification, JSON output format, and error codes.
+
+### Testing & Diagnostics
+
+#### Smoke Test
+
+Validate headed Chrome CDP functionality after Chrome updates:
+
+```bash
+./tests/smoke-test-headed.sh
+```
+
+**What it tests:**
+- Chrome version detection (warns if Chrome 136+)
+- Headed launch with proper `--user-data-dir`
+- CDP endpoint availability
+- Runtime.evaluate functionality
+- DOM access
+- Auto-cleanup
+
+**Expected output:**
+```
+✓ All tests passed!
+
+Summary:
+  Chrome Version: Google Chrome 141.0.7390.109
+  CDP Port: 9999
+  Runtime.evaluate: ✓
+  DOM Access: ✓
+```
+
+#### Diagnostic Script
+
+For troubleshooting CDP connection issues:
+
+```bash
+# Get page ID first
+PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
+
+# Run diagnostic with full logging
+PYTHONASYNCIODEBUG=1 python3 scripts/diagnostics/debug-cdp-connection.py $PAGE_ID 9222
+```
+
+**Shows:**
+- Step-by-step WebSocket connection flow
+- Exact point where Chrome stops responding (if any)
+- Full async debug logs
+- WebSocket handshake details
+
+### Common Issues
+
+**Issue: Headed mode hangs indefinitely**
+
+**Cause:** Chrome 136+ requires `--user-data-dir` for CDP access.
+
+**Solution:** Ensure you're using `chrome-launcher.sh` or `debug-orchestrator.sh`, which handle this automatically. If launching Chrome manually, always include `--user-data-dir`:
+
+```bash
+chrome --user-data-dir=~/.chrome-debug-profile --remote-debugging-port=9222 URL
+```
+
+**See:** `docs/headed-mode/CHROME-136-CDP-INCIDENT.md` for full details.
+
