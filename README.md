@@ -45,6 +45,7 @@ This installs the skill to `~/.claude/skills/browser-debugger/`
 - `websockets` library: `pip3 install websockets --break-system-packages`
 - Chrome or Chromium
 - `jq`: `brew install jq` (macOS) or `apt-get install jq` (Linux)
+- `websocat` (optional CLI for ad-hoc CDP commands): `brew install websocat`
 
 ## Usage
 
@@ -112,6 +113,34 @@ python3 ~/.claude/skills/browser-debugger/cdp-console.py $PAGE_ID
 # Cleanup
 pkill -f "chrome.*9222"
 ```
+
+### Ad-hoc CDP commands with websocat
+
+For live DOM extraction or one-off commands, talk directly to Chrome’s WebSocket endpoint:
+
+```bash
+# Launch Chrome (or use debug-orchestrator.sh)
+
+# Discover the WebSocket debugger URL
+WS_URL=$(curl -s http://localhost:9222/json | jq -r '.[0].webSocketDebuggerUrl')
+
+# Grab the fully hydrated DOM
+echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"document.documentElement.outerHTML","returnByValue":true}}' \
+  | websocat -n1 -B 1048576 "$WS_URL" \
+  | jq -r '.result.result.value' > /tmp/live-dom.html
+
+# Other expressions work too—document title, cookies, screenshots, etc.
+```
+
+Notes:
+- `-B 1048576` bumps the buffer to 1 MB so large pages don’t truncate.
+- Swap the expression to run anything in the page context:
+  ```bash
+  echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"document.title","returnByValue":true}}' \
+    | websocat -n1 "$WS_URL"
+  ```
+- For screenshots, use `Page.captureScreenshot` and base64‑decode the result.
+- Headed sessions launched via `chrome-launcher.sh` already set `--user-data-dir`, which Chrome 136+ requires for CDP.
 
 ## Capabilities
 

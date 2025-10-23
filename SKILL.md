@@ -23,6 +23,7 @@ Required tools and packages:
 - **Chrome or Chromium** browser
 - **jq**: For JSON parsing (install with `brew install jq` on macOS or `apt-get install jq` on Linux)
 - **curl**: Usually pre-installed
+- **websocat** *(optional but recommended for ad-hoc CDP commands)*: `brew install websocat`
 
 ### Chrome 136+ Requirement (IMPORTANT)
 
@@ -357,6 +358,34 @@ debug-orchestrator.sh "$URL" 15 /tmp/network.log --include-console --summary=bot
 pkill -f "chrome.*9222"
 ```
 
+## Ad-hoc CDP Commands with websocat
+
+Need the fully hydrated DOM or a custom Chrome DevTools command? Use the built-in `websocat` CLI.
+
+```bash
+# 1. Launch Chrome with --remote-debugging-port (or run debug-orchestrator.sh)
+
+# 2. Discover the WebSocket debugger URL
+WS_URL=$(curl -s http://localhost:9222/json | jq -r '.[0].webSocketDebuggerUrl')
+
+# 3. Run a CDP command (this example grabs the full DOM)
+echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"document.documentElement.outerHTML","returnByValue":true}}' \
+  | websocat -n1 -B 1048576 "$WS_URL" \
+  | jq -r '.result.result.value' > /tmp/live-dom.html
+
+head -n 20 /tmp/live-dom.html   # inspect the output
+```
+
+Tips:
+- `-B 1048576` raises the buffer to 1 MB so large pages don’t truncate.
+- Swap the expression to collect other data:
+  ```bash
+  echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"document.title","returnByValue":true}}' \
+    | websocat -n1 "$WS_URL"
+  ```
+- Other handy methods: `Page.captureScreenshot`, `Network.getAllCookies`, `Accessibility.getFullAXTree`.
+- Headed sessions launched via `chrome-launcher.sh` already set `--user-data-dir`, which Chrome 136+ requires. Include it if you launch manually.
+
 ## Documentation & Testing
 
 ### Documentation Structure
@@ -427,4 +456,3 @@ chrome --user-data-dir=~/.chrome-debug-profile --remote-debugging-port=9222 URL
 ```
 
 **See:** `docs/headed-mode/CHROME-136-CDP-INCIDENT.md` for full details.
-
