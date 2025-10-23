@@ -107,117 +107,98 @@ Output format:
 {"event":"failed","errorText":"net::ERR_CONNECTION_REFUSED","requestId":"..."}
 ```
 
-## Complete Workflows
+## Recommended Workflow (One-Command Orchestrator)
 
-### Workflow: Debug a website completely
-
-```bash
-URL="https://example.com"
-
-# Step 1: Get DOM structure
-echo "=== Fetching DOM ==="
-chrome --headless=new --dump-dom $URL > /tmp/dom.html
-echo "DOM saved ($(wc -l < /tmp/dom.html) lines)"
-
-# Step 2: Start Chrome with debugging
-echo "=== Starting Chrome ==="
-chrome --headless=new --remote-debugging-port=9222 $URL &
-CHROME_PID=$!
-sleep 2
-
-# Step 3: Get page ID
-PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
-echo "Page ID: $PAGE_ID"
-
-# Step 4: Monitor console and network
-echo "=== Monitoring ==="
-python3 cdp-console.py $PAGE_ID > /tmp/console.log &
-CONSOLE_PID=$!
-python3 cdp-network.py $PAGE_ID > /tmp/network.log &
-NETWORK_PID=$!
-
-# Wait for activity
-sleep 10
-
-# Step 5: Stop monitoring
-kill $CONSOLE_PID $NETWORK_PID $CHROME_PID 2>/dev/null
-
-# Step 6: Analyze results
-echo "=== Analysis ==="
-echo "Console errors:"
-grep '"type":"error"' /tmp/console.log | jq -r '.message'
-
-echo -e "\nNetwork failures:"
-grep '"event":"failed"' /tmp/network.log | jq -r '.errorText'
-
-echo -e "\nTotal elements: $(grep -o '<[a-zA-Z][^>]*>' /tmp/dom.html | wc -l)"
-```
-
-### Workflow: Check for JavaScript errors only
+`debug-orchestrator.sh` coordinates Chrome, the CDP collectors, and post-run summaries. Use it whenever you need full telemetry in one go.
 
 ```bash
-URL="https://example.com"
-
-chrome --headless=new --remote-debugging-port=9222 $URL &
-sleep 2
-PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
-
-# Monitor for 10 seconds and filter errors
-timeout 10 python3 cdp-console.py $PAGE_ID | \
-  jq -r 'select(.type == "error") | .message'
-
-# Cleanup
-pkill -f "chrome.*9222"
+./debug-orchestrator.sh "https://example.com/login" 20 /tmp/example.log \
+  --include-console --summary=both --idle=3
 ```
 
-### Workflow: List all API calls
+What you get:
+- Network stream written to `/tmp/example.log`
+- Console stream written to `/tmp/example-console.log`
+- Text and JSON summaries printed at the end
+- Automatic Chrome startup/cleanup on port 9222
 
+### Useful flags
+- `--idle=<seconds>`: stop capture after the page goes quiet (applies to both console and network collectors).
+- `--include-console`: capture console events alongside network data.
+- `--console-log=PATH`: direct console output to a custom file.
+- `--filter="<substring>"`: switch to the `cdp-network-with-body.py` collector and persist matching response bodies; use cautiously because bodies can become large.
+- `--summary=text|json|both`: control summarizer output.
+
+### Handling port conflicts
+If Chrome is already bound to port 9222 the orchestrator aborts after showing the owning PID. Free the port and rerun:
 ```bash
-URL="https://example.com"
-
-chrome --headless=new --remote-debugging-port=9222 $URL &
-sleep 2
-PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
-
-# Monitor for 10 seconds and show all requests
-timeout 10 python3 cdp-network.py $PAGE_ID | \
-  jq -r 'select(.event == "request") | .method + " " + .url'
-
-# Cleanup
-pkill -f "chrome.*9222"
+pkill -f "chrome.*9222"   # safe when you launched Chrome headlessly
+# or rerun in manual mode with an alternate port (see below)
 ```
 
-## Best Practices
+## Manual Control (When You Cannot Use the Orchestrator)
 
-1. **Always clean up Chrome processes**:
-   ```bash
-   pkill -f "chrome.*9222"
-   ```
+The lower-level scripts are still available and mirror the orchestrator’s behaviour. Combine them to fit bespoke workflows or to run against a pre-existing Chrome session.
 
-2. **Use timeouts to prevent hanging**:
-   ```bash
-   timeout 10 python3 cdp-console.py $PAGE_ID
-   ```
+### Launch Chrome on a custom debugging port
+```bash
+PORT=9230
+chrome --headless=new --remote-debugging-port=${PORT} https://example.com &
+sleep 2
+PAGE_ID=$(curl -s "http://localhost:${PORT}/json" | jq -r '.[] | select(.type=="page") | .id' | head -1)
+```
 
-3. **Save outputs for analysis**:
-   ```bash
-   python3 cdp-console.py $PAGE_ID > /tmp/console.log
-   ```
+### Monitor console output
+```bash
+timeout 15 python3 cdp-console.py "$PAGE_ID" --port=${PORT} \
+  | jq 'del(.stackTrace)'   # trim stack traces if you only need messages
+```
 
-4. **Wait for Chrome to start** (the `sleep 2` is critical):
-   ```bash
-   chrome --headless=new --remote-debugging-port=9222 $URL &
-   sleep 2  # Don't skip this
-   ```
+### Monitor network traffic
+```bash
+timeout 15 python3 cdp-network.py "$PAGE_ID" --port=${PORT} > /tmp/network.log
+```
 
-5. **Verify page ID before monitoring**:
-   ```bash
-   PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
-   if [ -z "$PAGE_ID" ] || [ "$PAGE_ID" = "null" ]; then
-       echo "Error: Could not get page ID"
-       exit 1
-   fi
-   ```
+Filter out noisy resources (e.g., blob URLs) during analysis:
+```bash
+jq 'select(.event == "request" and (.url | startswith("blob:") | not))' /tmp/network.log
+```
+
+Capture response bodies for matching URLs:
+```bash
+timeout 20 python3 cdp-network-with-body.py "$PAGE_ID" --port=${PORT} \
+  --filter=api/v1/orders > /tmp/network-with-bodies.log
+```
+
+### Grab a DOM snapshot
+```bash
+chrome --headless=new --dump-dom https://example.com > /tmp/dom.html
+```
+
+## Running Summaries After the Fact
+
+`summarize.py` consumes any network/console log pair and prints aggregate stats.
+```bash
+python3 summarize.py \
+  --network /tmp/example.log \
+  --console /tmp/example-console.log \
+  --duration 20 \
+  --format both \
+  --include-console
+```
+
+Expect totals, status histograms, a host breakdown, and the top 10 distinct request URLs. Pair this with ad-hoc `jq` filters for deeper dives.
+
+## Operational Tips
+
+- **Trim console payloads**: console entries include full stack traces by default; use `jq 'del(.stackTrace)'` or pipe to `sed`/`head` when reviewing long sessions to control file size.
+- **Separate error channels early**: `jq 'select(.type=="error")' /tmp/example-console.log` gives a compact error-only view, sparing you from opening multi-hundred-kilobyte logs.
+- **Keep Chrome tidy**: always terminate headless Chrome when you are done to prevent port conflicts.
+  ```bash
+  pkill -f "chrome.*9222"
+  ```
+- **Prefer `timeout`**: wrap long-running captures with `timeout <seconds> <command>` so unattended sessions shut down automatically.
+- **Store artefacts predictably**: write logs to `/tmp/<scenario>-network.log` and `/tmp/<scenario>-console.log` to make later comparisons with `diff` or `jq` painless.
 
 ## Platform-Specific Notes
 
