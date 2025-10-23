@@ -1,17 +1,19 @@
 ---
 name: Browser Debugger
-description: Inspect websites using Chrome headless and Chrome DevTools Protocol. Extract DOM structure, monitor JavaScript console logs, and track network requests. Use when debugging websites, checking for JavaScript errors, monitoring API calls, analyzing network activity, or inspecting page structure.
+description: Inspect websites using Chrome (headless or headed) and Chrome DevTools Protocol. Extract DOM structure, monitor JavaScript console logs, track network requests, and interact with live pages. Use when debugging websites, checking for JavaScript errors, monitoring API calls, analyzing network activity, inspecting page structure, or testing form interactions in real-time.
 ---
 
 # Browser Debugger
 
-This skill enables you to inspect and debug websites using Chrome's headless mode and the Chrome DevTools Protocol (CDP).
+This skill enables you to inspect and debug websites using Chrome with the Chrome DevTools Protocol (CDP). Supports both headless mode (automated testing) and headed mode (interactive debugging with visible browser).
 
 ## What this skill does
 
 - **Extract DOM**: Get the fully rendered HTML structure after JavaScript execution
 - **Monitor Console**: Capture JavaScript console logs, errors, warnings, and exceptions
 - **Track Network**: Monitor HTTP requests, responses, and failures in real-time
+- **Headed Mode (NEW)**: Launch visible Chrome window for interactive debugging
+- **Real-time Form Monitoring**: Watch form field changes as users type
 
 ## Prerequisites
 
@@ -107,13 +109,44 @@ Output format:
 {"event":"failed","errorText":"net::ERR_CONNECTION_REFUSED","requestId":"..."}
 ```
 
+## Quick Start: Headed Mode (Interactive Debugging)
+
+**NEW**: Launch a visible Chrome window that you can interact with while monitoring changes:
+
+```bash
+./debug-orchestrator.sh "http://localhost:3000/signin" \
+  --mode=headed \
+  --include-console \
+  --idle=30
+```
+
+This will:
+- Open a **visible Chrome window** showing the page
+- You can **type, click, and interact** normally
+- Console logs and network activity are captured in real-time
+- Automatically stops after 30 seconds of inactivity
+- Uses persistent profile at `~/.chrome-debug-profile`
+
+**Use cases:**
+- Testing form interactions (login, signup, checkout)
+- Debugging pages that require manual authentication
+- Watching real-time form validation
+- Testing workflows that need human interaction
+
 ## Recommended Workflow (One-Command Orchestrator)
 
 `debug-orchestrator.sh` coordinates Chrome, the CDP collectors, and post-run summaries. Use it whenever you need full telemetry in one go.
 
+**Headless mode** (automated, no UI):
 ```bash
 ./debug-orchestrator.sh "https://example.com/login" 20 /tmp/example.log \
   --include-console --summary=both --idle=3
+```
+
+**Headed mode** (visible browser):
+```bash
+./debug-orchestrator.sh "http://localhost:3000/checkout" 20 /tmp/checkout.log \
+  --mode=headed --include-console --summary=both
 ```
 
 What you get:

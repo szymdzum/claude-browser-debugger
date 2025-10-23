@@ -1,13 +1,15 @@
 #!/bin/bash
 # debug-orchestrator.sh - Flexible page debugging with CDP
 # Usage: ./debug-orchestrator.sh <URL> [duration] [output-file] [--filter=pattern] \
-#        [--summary=text|json|both] [--include-console] [--console-log=path] [--idle=seconds]
+#        [--summary=text|json|both] [--include-console] [--console-log=path] [--idle=seconds] \
+#        [--mode=headless|headed] [--port=number|auto] [--profile=path|none]
 #
 # Examples:
 #   ./debug-orchestrator.sh "https://example.com/register" --summary=both
 #   ./debug-orchestrator.sh "https://demo.example/login" 10 --include-console --idle=2
 #   ./debug-orchestrator.sh "https://shop.example/checkout" 15 /tmp/checkout.log --summary=json
 #   ./debug-orchestrator.sh "https://api.example/data" 15 /tmp/out.log --filter=marketing --include-console
+#   ./debug-orchestrator.sh "http://localhost:3000/signin" --mode=headed --include-console
 
 set -e
 
@@ -33,6 +35,9 @@ FILTER_VALUE=""
 INCLUDE_CONSOLE=0
 CONSOLE_LOG=""
 IDLE_TIMEOUT=""
+MODE="headless"
+PORT="9222"
+PROFILE=""
 
 if [ $# -gt 0 ] && [[ $1 != --* ]]; then
     DURATION="$1"
@@ -62,6 +67,15 @@ while [ $# -gt 0 ]; do
         --idle=*)
             IDLE_TIMEOUT="${1#--idle=}"
             ;;
+        --mode=*)
+            MODE="${1#--mode=}"
+            ;;
+        --port=*)
+            PORT="${1#--port=}"
+            ;;
+        --profile=*)
+            PROFILE="${1#--profile=}"
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
@@ -70,8 +84,6 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-PORT=9222
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ "$INCLUDE_CONSOLE" -eq 1 ] && [ -z "$CONSOLE_LOG" ]; then
@@ -90,6 +102,7 @@ fi
 
 echo "🔧 Debug Configuration:"
 echo "   URL: $URL"
+echo "   Mode: $MODE"
 echo "   Duration: ${DURATION}s"
 echo "   Output: $OUTPUT_FILE"
 if [ -n "$FILTER_VALUE" ]; then
@@ -106,39 +119,68 @@ if [ -n "$IDLE_TIMEOUT" ]; then
 fi
 echo ""
 
-# Step 1: Clean up any existing Chrome instances
-echo "🧹 Cleaning up existing Chrome instances..."
-pkill -9 -f "chrome.*${PORT}" 2>/dev/null || true
-sleep 1
+# Step 1: Launch Chrome using chrome-launcher.sh
+echo "🚀 Launching Chrome..."
 
-# Verify port is free
-if lsof -i :${PORT} > /dev/null 2>&1; then
-    echo "❌ Port ${PORT} is still in use. Please manually kill the process."
-    lsof -i :${PORT}
+LAUNCHER_ARGS=(
+    --mode="$MODE"
+    --port="$PORT"
+    --url="$URL"
+)
+
+if [ -n "$PROFILE" ]; then
+    LAUNCHER_ARGS+=(--profile="$PROFILE")
+fi
+
+LAUNCHER_OUTPUT=$("${SCRIPT_DIR}/chrome-launcher.sh" "${LAUNCHER_ARGS[@]}" 2>&1)
+
+# Separate stderr (diagnostics) from stdout (JSON)
+LAUNCHER_STDERR=$(echo "$LAUNCHER_OUTPUT" | grep -v "^{" || true)
+LAUNCHER_JSON=$(echo "$LAUNCHER_OUTPUT" | grep "^{" | tail -1)
+
+# Show launcher diagnostics
+if [ -n "$LAUNCHER_STDERR" ]; then
+    echo "$LAUNCHER_STDERR" >&2
+fi
+
+# Parse JSON output
+STATUS=$(echo "$LAUNCHER_JSON" | jq -r '.status' 2>/dev/null || echo "error")
+
+if [ "$STATUS" != "success" ]; then
+    echo ""
+    echo "❌ Chrome launch failed"
+
+    CODE=$(echo "$LAUNCHER_JSON" | jq -r '.code' 2>/dev/null || echo "UNKNOWN")
+    MESSAGE=$(echo "$LAUNCHER_JSON" | jq -r '.message' 2>/dev/null || echo "Unknown error")
+    RECOVERY=$(echo "$LAUNCHER_JSON" | jq -r '.recovery' 2>/dev/null || echo "No recovery available")
+
+    echo "   Error: $CODE"
+    echo "   Message: $MESSAGE"
+    echo ""
+    echo "💡 Recovery:"
+    echo "   $RECOVERY"
+    echo ""
     exit 1
 fi
 
-# Step 2: Start Chrome with blank page
-echo "🚀 Starting Chrome on port ${PORT}..."
-"$CHROME" --headless=new --remote-debugging-port=${PORT} about:blank > /dev/null 2>&1 &
-CHROME_PID=$!
-echo "   Chrome PID: $CHROME_PID"
-sleep 3
+# Extract connection info
+RESOLVED_PORT=$(echo "$LAUNCHER_JSON" | jq -r '.port')
+PAGE_ID=$(echo "$LAUNCHER_JSON" | jq -r '.page_id')
+CHROME_PID=$(echo "$LAUNCHER_JSON" | jq -r '.pid')
+RESOLVED_PROFILE=$(echo "$LAUNCHER_JSON" | jq -r '.profile')
 
-# Step 3: Get page ID (filter for actual page, not extensions)
-echo "🔍 Getting page ID..."
-PAGE_ID=$(curl -s "http://localhost:${PORT}/json" | jq -r '.[] | select(.type == "page") | .id' | head -1)
-
-if [ -z "$PAGE_ID" ] || [ "$PAGE_ID" = "null" ]; then
-    echo "❌ Failed to get page ID"
-    kill $CHROME_PID 2>/dev/null
-    exit 1
-fi
-
+echo ""
+echo "✅ Chrome launched successfully"
+echo "   PID: $CHROME_PID"
+echo "   Port: $RESOLVED_PORT"
 echo "   Page ID: $PAGE_ID"
+if [ "$MODE" = "headed" ]; then
+    echo "   Profile: $RESOLVED_PROFILE"
+    echo "   💡 You can now interact with the visible Chrome window"
+fi
 echo ""
 
-# Step 4: Monitor network traffic
+# Step 2: Monitor network traffic
 echo "📡 Monitoring network traffic for ${DURATION}s..."
 echo "   Press Ctrl+C to stop early"
 echo ""
@@ -160,11 +202,11 @@ summarize_log() {
 }
 
 NETWORK_SCRIPT="${SCRIPT_DIR}/cdp-network.py"
-NETWORK_ARGS=("$PAGE_ID" "$URL")
+NETWORK_ARGS=("$PAGE_ID" "$URL" "--port=${RESOLVED_PORT}")
 
 if [ -n "$FILTER_VALUE" ]; then
     NETWORK_SCRIPT="${SCRIPT_DIR}/cdp-network-with-body.py"
-    NETWORK_ARGS=("$PAGE_ID" "$URL" "$FILTER")
+    NETWORK_ARGS=("$PAGE_ID" "$URL" "$FILTER" "--port=${RESOLVED_PORT}")
 fi
 
 if [ -n "$IDLE_TIMEOUT" ]; then
@@ -173,7 +215,7 @@ fi
 
 if [ "$INCLUDE_CONSOLE" -eq 1 ]; then
     echo "🖥️ Monitoring console output..."
-    CONSOLE_ARGS=("$PAGE_ID" "$URL")
+    CONSOLE_ARGS=("$PAGE_ID" "$URL" "--port=${RESOLVED_PORT}")
     if [ -n "$IDLE_TIMEOUT" ]; then
         CONSOLE_ARGS+=("--idle-timeout=${IDLE_TIMEOUT}")
     fi
@@ -190,7 +232,7 @@ if [ "$INCLUDE_CONSOLE" -eq 1 ]; then
     wait $CONSOLE_JOB || true
 fi
 
-# Step 5: Analyze results
+# Step 3: Analyze results
 if [[ "$SUMMARY_FORMAT" == "text" || "$SUMMARY_FORMAT" == "both" ]]; then
     echo ""
     echo "📊 Analysis Results:"
@@ -207,7 +249,13 @@ fi
 echo "💾 Full output saved to: $OUTPUT_FILE"
 echo ""
 
-# Step 6: Cleanup
+# Step 4: Cleanup
 echo "🧹 Cleaning up..."
 kill $CHROME_PID 2>/dev/null || true
+
+if [ "$MODE" = "headed" ]; then
+    echo "   💡 Note: Persistent profile kept at: $RESOLVED_PROFILE"
+    echo "   To clean: rm -rf $RESOLVED_PROFILE"
+fi
+
 echo "✅ Done!"
