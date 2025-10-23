@@ -1,6 +1,6 @@
 # Browser Debugger Skill for Claude Code
 
-Debug websites using Chrome (headless or headed) through the Chrome DevTools Protocol. Launch a visible browser for interactive workflows or keep things headless for automation while you extract DOM snapshots, monitor console logs, and track network requests.
+Provide quick website telemetry directly to Claude Code CLI using native Chrome DevTools Protocol via WebSocket—no MCP overhead. Capture token-efficient DOM snapshots, console logs, and network requests for instant context during debugging workflows. Launch headless Chrome for automated capture or headed mode to interact with the page manually, then extract console, network, or DOM state to validate.
 
 ## Why This Exists
 
