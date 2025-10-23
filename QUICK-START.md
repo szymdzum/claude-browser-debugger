@@ -14,8 +14,8 @@ That's it! The script will:
 1. Start Chrome in headless mode
 2. Enable network monitoring
 3. Navigate to your URL
-4. Capture all network requests/responses
-5. Show you a summary
+4. Capture all network requests/responses (and console logs if requested)
+5. Show you a summary (add `--summary=json` or `--summary=both` for structured output)
 6. Save detailed logs to `/tmp/page-debug.log`
 
 ## 📋 Examples
@@ -34,6 +34,17 @@ That's it! The script will:
   "http://localhost:3000/checkout" \
   15 \
   /tmp/checkout-network.log
+```
+
+### Debug login with console + idle detection
+```bash
+.claude/skills/browser-debugger/debug-orchestrator.sh \
+  "http://localhost:3000/login" \
+  20 \
+  /tmp/login-session.log \
+  --include-console \
+  --idle=3 \
+  --summary=both
 ```
 
 ### Debug production site
@@ -60,6 +71,7 @@ The script automatically analyzes and shows:
 - **Failed requests** with error messages
 - **Top 10 requests** with URLs
 - **Optional JSON summary** with counts, hosts, status breakdown
+- **Console log breakdown** (entries, levels, sample errors) when `--include-console` is enabled
 
 ## 🔍 Manual Usage (Advanced)
 
@@ -120,7 +132,9 @@ grep 'event.*failed' /tmp/page-debug.log
 ## ⚙️ Parameters
 
 ```bash
-debug-orchestrator.sh <URL> [duration] [output-file] [--filter=pattern] [--summary=text|json|both]
+debug-orchestrator.sh <URL> [duration] [output-file] \
+  [--filter=pattern] [--summary=text|json|both] \
+  [--include-console] [--console-log=path] [--idle=seconds]
 ```
 
 - **URL** (required): The page to debug
@@ -128,6 +142,9 @@ debug-orchestrator.sh <URL> [duration] [output-file] [--filter=pattern] [--summa
 - **output-file** (optional): Where to save logs (default: /tmp/page-debug.log)
 - **--filter=pattern** (optional): Capture response bodies for URLs matching pattern
 - **--summary=...** (optional): Choose `text` (default), `json`, or `both`
+- **--include-console** (optional): Capture console output alongside network traffic
+- **--console-log=path** (optional): Override the console log file path
+- **--idle=seconds** (optional): Stop once the page has been idle for the specified time (duration still acts as a ceiling)
 
 ### Filter Mode
 

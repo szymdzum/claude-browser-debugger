@@ -64,9 +64,11 @@ What API calls does https://example.com make?
 
 Claude will automatically use this skill when appropriate.
 
-### Structured summaries on demand
+### Orchestrator options at a glance
 
-Use `debug-orchestrator.sh --summary=json` to emit a machine-readable JSON report alongside the text summary. Pass `--summary=both` to keep the default text and add JSON for downstream tooling.
+- `--summary=json|both` adds structured output; `json` emits machine-readable data only, `both` keeps the human summary too.
+- `--include-console` launches the console monitor alongside network capture, merging error counts into the summary (log file defaults to `<output>-console.log`, override with `--console-log=...`).
+- `--idle=<seconds>` stops as soon as Chrome has been quiet for the given period, so you can capture long pages without guessing a timeout.
 
 ## What gets installed
 
@@ -107,6 +109,12 @@ Capture JavaScript logs, errors, warnings, and exceptions in real-time.
 
 ### Track Network
 Monitor HTTP requests, responses, and failures.
+
+### Unified Console + Network Sessions
+Run the orchestrator with `--include-console` to launch both monitors together and surface console levels in the final summary/log bundle.
+
+### Smart Idle Detection
+Avoid hard-coded durations by passing `--idle=<seconds>`; the monitors exit once CDP traffic has been quiet for that long (with the original duration acting as a safety ceiling).
 
 ## Files
 

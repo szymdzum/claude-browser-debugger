@@ -12,7 +12,7 @@ from websockets.exceptions import WebSocketException
 if len(sys.argv) < 2:
     print(
         'Usage: cdp-network-with-body.py <page-id> [url] '
-        '[--port=9222] [--filter=pattern]',
+        '[--port=9222] [--filter=pattern] [--idle-timeout=seconds]',
         file=sys.stderr,
     )
     sys.exit(1)
@@ -22,12 +22,19 @@ page_id = sys.argv[1]
 url = None
 port = 9222
 url_filter = None
+idle_timeout = None
 
 for arg in sys.argv[2:]:
     if arg.startswith('--port='):
         port = int(arg.split('=')[1])
     elif arg.startswith('--filter='):
         url_filter = arg.split('=')[1]
+    elif arg.startswith('--idle-timeout='):
+        try:
+            idle_timeout = float(arg.split('=')[1])
+        except ValueError:
+            print('Invalid idle-timeout value', file=sys.stderr)
+            sys.exit(1)
     elif not arg.startswith('--'):
         url = arg
 
@@ -59,7 +66,16 @@ async def monitor_network():
             msg_id += 1
 
         # Listen for messages
-        async for message in ws:
+        while True:
+            try:
+                if idle_timeout:
+                    message = await asyncio.wait_for(ws.recv(), timeout=idle_timeout)
+                else:
+                    message = await ws.recv()
+            except asyncio.TimeoutError:
+                print(f'Idle timeout reached after {idle_timeout} seconds', file=sys.stderr)
+                break
+
             msg = json.loads(message)
 
             # Track requests that match our filter

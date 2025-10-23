@@ -319,6 +319,9 @@ python3 cdp-network.py $PAGE_ID
 python3 cdp-console.py $PAGE_ID > /tmp/console.log &
 python3 cdp-network.py $PAGE_ID > /tmp/network.log &
 
+# Orchestrated capture with summaries & idle detection
+debug-orchestrator.sh "$URL" 15 /tmp/network.log --include-console --summary=both --idle=2
+
 # Cleanup
 pkill -f "chrome.*9222"
 ```

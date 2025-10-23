@@ -1,12 +1,13 @@
 #!/bin/bash
 # debug-orchestrator.sh - Flexible page debugging with CDP
-# Usage: ./debug-orchestrator.sh <URL> [duration] [output-file] [--filter=pattern]
+# Usage: ./debug-orchestrator.sh <URL> [duration] [output-file] [--filter=pattern] \
+#        [--summary=text|json|both] [--include-console] [--console-log=path] [--idle=seconds]
 #
 # Examples:
-#   ./debug-orchestrator.sh "http://localhost:3000/customer/register?redirectTo=%2F"
-#   ./debug-orchestrator.sh "http://localhost:3000/login" 10
-#   ./debug-orchestrator.sh "http://localhost:3000/checkout" 15 /tmp/checkout-debug.log
-#   ./debug-orchestrator.sh "http://localhost:3000/register" 15 /tmp/out.log --filter=marketingChannels
+#   ./debug-orchestrator.sh "http://localhost:3000/customer/register?redirectTo=%2F" --summary=both
+#   ./debug-orchestrator.sh "http://localhost:3000/login" 10 --include-console --idle=2
+#   ./debug-orchestrator.sh "http://localhost:3000/checkout" 15 /tmp/checkout.log --summary=json
+#   ./debug-orchestrator.sh "http://localhost:3000/register" 15 /tmp/out.log --filter=marketingChannels --include-console
 
 set -e
 
@@ -29,6 +30,9 @@ OUTPUT_FILE="/tmp/page-debug.log"
 SUMMARY_FORMAT="text"
 FILTER=""
 FILTER_VALUE=""
+INCLUDE_CONSOLE=0
+CONSOLE_LOG=""
+IDLE_TIMEOUT=""
 
 if [ $# -gt 0 ] && [[ $1 != --* ]]; then
     DURATION="$1"
@@ -49,6 +53,15 @@ while [ $# -gt 0 ]; do
         --summary=*)
             SUMMARY_FORMAT="${1#--summary=}"
             ;;
+        --include-console)
+            INCLUDE_CONSOLE=1
+            ;;
+        --console-log=*)
+            CONSOLE_LOG="${1#--console-log=}"
+            ;;
+        --idle=*)
+            IDLE_TIMEOUT="${1#--idle=}"
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
@@ -61,6 +74,20 @@ CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 PORT=9222
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+if [ "$INCLUDE_CONSOLE" -eq 1 ] && [ -z "$CONSOLE_LOG" ]; then
+    if [[ "$OUTPUT_FILE" == *.* ]]; then
+        base="${OUTPUT_FILE%.*}"
+        ext="${OUTPUT_FILE##*.}"
+        if [ "$base" = "$OUTPUT_FILE" ]; then
+            CONSOLE_LOG="${OUTPUT_FILE}-console.log"
+        else
+            CONSOLE_LOG="${base}-console.${ext}"
+        fi
+    else
+        CONSOLE_LOG="${OUTPUT_FILE}-console.log"
+    fi
+fi
+
 echo "🔧 Debug Configuration:"
 echo "   URL: $URL"
 echo "   Duration: ${DURATION}s"
@@ -70,6 +97,12 @@ if [ -n "$FILTER_VALUE" ]; then
 fi
 if [ "$SUMMARY_FORMAT" != "text" ]; then
     echo "   Summary format: $SUMMARY_FORMAT"
+fi
+if [ "$INCLUDE_CONSOLE" -eq 1 ]; then
+    echo "   Console log: $CONSOLE_LOG"
+fi
+if [ -n "$IDLE_TIMEOUT" ]; then
+    echo "   Idle timeout: ${IDLE_TIMEOUT}s"
 fi
 echo ""
 
@@ -113,7 +146,7 @@ echo ""
 # Choose which script to use based on filter
 summarize_log() {
     local format="$1"
-    python3 - "$OUTPUT_FILE" "$DURATION" "$FILTER_VALUE" "$format" <<'PY'
+    python3 - "$OUTPUT_FILE" "${CONSOLE_LOG}" "$DURATION" "$FILTER_VALUE" "$format" "$INCLUDE_CONSOLE" <<'PY'
 import json
 import sys
 from collections import Counter
@@ -122,9 +155,11 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 log_path = Path(sys.argv[1])
-duration = float(sys.argv[2])
-filter_value = sys.argv[3]
-output_format = sys.argv[4]
+console_path_arg = sys.argv[2]
+duration = float(sys.argv[3])
+filter_value = sys.argv[4]
+output_format = sys.argv[5]
+include_console = sys.argv[6] == '1'
 
 events = []
 requests = []
@@ -175,6 +210,7 @@ if log_path.exists():
 report = {
     "meta": {
         "log_path": str(log_path),
+        "console_log": console_path_arg or None,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "duration_seconds": duration,
         "filter": filter_value or None,
@@ -214,8 +250,53 @@ for failure in failures[:10]:
         "requestId": failure.get('requestId'),
     })
 
+console_report = {
+    "entry_count": 0,
+    "levels": {},
+    "sample_errors": [],
+}
+
+if include_console and console_path_arg:
+    console_path = Path(console_path_arg)
+    if console_path.exists():
+        level_counts = Counter()
+        sample_errors = []
+        for raw_line in console_path.read_text().splitlines():
+            stripped = raw_line.strip()
+            if not stripped:
+                continue
+            try:
+                entry = json.loads(stripped)
+            except json.JSONDecodeError:
+                continue
+
+            level = (entry.get('type') or '').lower()
+            if not level:
+                continue
+
+            level_counts[level] += 1
+
+            if level in {'error', 'exception'} and len(sample_errors) < 5:
+                sample_errors.append({
+                    'message': entry.get('message'),
+                    'url': entry.get('url'),
+                    'lineNumber': entry.get('lineNumber'),
+                })
+
+        console_report = {
+            "entry_count": sum(level_counts.values()),
+            "levels": dict(level_counts),
+            "sample_errors": sample_errors,
+        }
+
 if output_format == "json":
-    print(json.dumps(report, indent=2))
+    summary = {
+        "meta": report["meta"],
+        "network": report["network"],
+    }
+    if include_console:
+        summary["console"] = console_report
+    print(json.dumps(summary, indent=2))
 else:
     print(f"   Total Requests:  {report['network']['request_count']}")
     print(f"   Total Responses: {report['network']['response_count']}")
@@ -247,20 +328,58 @@ else:
             else:
                 print(f"   {error}")
         print("")
+
+    if include_console:
+        print("🖥️ Console Summary:")
+        print(f"   Entries: {console_report['entry_count']}")
+        if console_report['levels']:
+            print("   Levels:")
+            for level, count in sorted(console_report['levels'].items()):
+                print(f"      {level}: {count}")
+        if console_report['sample_errors']:
+            print("   Sample Errors:")
+            for error in console_report['sample_errors']:
+                message = error.get('message') or '(no message)'
+                location = ''
+                if error.get('url'):
+                    location = f" [{error['url']}"
+                    if error.get('lineNumber') is not None:
+                        location += f":{error['lineNumber']}"
+                    location += "]"
+                print(f"      {message}{location}")
+        print("")
 PY
 }
 
+NETWORK_SCRIPT="${SCRIPT_DIR}/cdp-network.py"
+NETWORK_ARGS=("$PAGE_ID" "$URL")
+
 if [ -n "$FILTER_VALUE" ]; then
-    timeout ${DURATION} python3 "${SCRIPT_DIR}/cdp-network-with-body.py" \
-        "$PAGE_ID" \
-        "$URL" \
-        "$FILTER" \
-        2>&1 | tee "$OUTPUT_FILE" || true
-else
-    timeout ${DURATION} python3 "${SCRIPT_DIR}/cdp-network.py" \
-        "$PAGE_ID" \
-        "$URL" \
-        2>&1 | tee "$OUTPUT_FILE" || true
+    NETWORK_SCRIPT="${SCRIPT_DIR}/cdp-network-with-body.py"
+    NETWORK_ARGS=("$PAGE_ID" "$URL" "$FILTER")
+fi
+
+if [ -n "$IDLE_TIMEOUT" ]; then
+    NETWORK_ARGS+=("--idle-timeout=${IDLE_TIMEOUT}")
+fi
+
+if [ "$INCLUDE_CONSOLE" -eq 1 ]; then
+    echo "🖥️ Monitoring console output..."
+    CONSOLE_ARGS=("$PAGE_ID" "$URL")
+    if [ -n "$IDLE_TIMEOUT" ]; then
+        CONSOLE_ARGS+=("--idle-timeout=${IDLE_TIMEOUT}")
+    fi
+
+    set +e
+    timeout ${DURATION} python3 "${SCRIPT_DIR}/cdp-console.py" "${CONSOLE_ARGS[@]}" 2>&1 | tee "$CONSOLE_LOG" &
+    CONSOLE_JOB=$!
+    set -e
+fi
+
+timeout ${DURATION} python3 "$NETWORK_SCRIPT" "${NETWORK_ARGS[@]}" 2>&1 | tee "$OUTPUT_FILE" || true
+
+if [ "$INCLUDE_CONSOLE" -eq 1 ]; then
+    wait $CONSOLE_JOB || true
 fi
 
 # Step 5: Analyze results
