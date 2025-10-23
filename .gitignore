@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test outputs
+/tmp/
+*.tmp
