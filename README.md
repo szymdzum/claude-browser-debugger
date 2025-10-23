@@ -64,13 +64,21 @@ What API calls does https://example.com make?
 
 Claude will automatically use this skill when appropriate.
 
+### Orchestrator options at a glance
+
+- `--summary=json|both` adds structured output; `json` emits machine-readable data only, `both` keeps the human summary too.
+- `--include-console` launches the console monitor alongside network capture, merging error counts into the summary (log file defaults to `<output>-console.log`, override with `--console-log=...`).
+- `--idle=<seconds>` stops as soon as Chrome has been quiet for the given period, so you can capture long pages without guessing a timeout.
+
 ## What gets installed
 
 ```
 ~/.claude/skills/browser-debugger/
 ├── SKILL.md           # Skill instructions
 ├── cdp-console.py     # Console monitoring
-└── cdp-network.py     # Network monitoring
+├── cdp-network.py     # Network monitoring
+├── cdp-network-with-body.py  # Network monitoring + response bodies
+└── debug-orchestrator.sh     # Wrapper script with summaries
 ```
 
 ## Manual testing
@@ -102,11 +110,20 @@ Capture JavaScript logs, errors, warnings, and exceptions in real-time.
 ### Track Network
 Monitor HTTP requests, responses, and failures.
 
+### Unified Console + Network Sessions
+Run the orchestrator with `--include-console` to launch both monitors together and surface console levels in the final summary/log bundle.
+
+### Smart Idle Detection
+Avoid hard-coded durations by passing `--idle=<seconds>`; the monitors exit once CDP traffic has been quiet for that long (with the original duration acting as a safety ceiling).
+
 ## Files
 
 - `SKILL.md` - Core skill documentation (Claude reads this)
 - `cdp-console.py` - Console monitoring via WebSocket
 - `cdp-network.py` - Network monitoring via WebSocket
+- `cdp-network-with-body.py` - Optional response body capture
+- `debug-orchestrator.sh` - Chrome launcher + summary generator
+- `summarize.py` - Shared summary formatter for network/console logs
 - `install.sh` - Automated installer
 - `README.md` - This file
 

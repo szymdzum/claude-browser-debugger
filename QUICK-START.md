@@ -5,15 +5,17 @@
 Debug any page with network monitoring in one command:
 
 ```bash
-.claude/skills/browser-debugger/debug-orchestrator.sh "http://localhost:3000/customer/register?redirectTo=%2F"
+.claude/skills/browser-debugger/debug-orchestrator.sh \
+  "https://demo.example.com/customer/register?redirectTo=%2F" \
+  --summary=both
 ```
 
 That's it! The script will:
 1. Start Chrome in headless mode
 2. Enable network monitoring
 3. Navigate to your URL
-4. Capture all network requests/responses
-5. Show you a summary
+4. Capture all network requests/responses (and console logs if requested)
+5. Show you a summary (add `--summary=json` or `--summary=both` for structured output)
 6. Save detailed logs to `/tmp/page-debug.log`
 
 ## 📋 Examples
@@ -21,16 +23,28 @@ That's it! The script will:
 ### Debug registration page (10 seconds)
 ```bash
 .claude/skills/browser-debugger/debug-orchestrator.sh \
-  "http://localhost:3000/customer/register?redirectTo=%2F" \
-  10
+  "https://demo.example.com/customer/register?redirectTo=%2F" \
+  10 \
+  --summary=json
 ```
 
 ### Debug checkout with custom log file
 ```bash
 .claude/skills/browser-debugger/debug-orchestrator.sh \
-  "http://localhost:3000/checkout" \
+  "https://demo.example.com/checkout" \
   15 \
   /tmp/checkout-network.log
+```
+
+### Debug login with console + idle detection
+```bash
+.claude/skills/browser-debugger/debug-orchestrator.sh \
+  "https://demo.example.com/login" \
+  20 \
+  /tmp/login-session.log \
+  --include-console \
+  --idle=3 \
+  --summary=both
 ```
 
 ### Debug production site
@@ -43,7 +57,7 @@ That's it! The script will:
 ### Capture specific API response bodies
 ```bash
 .claude/skills/browser-debugger/debug-orchestrator.sh \
-  "http://localhost:3000/customer/register?redirectTo=%2F" \
+  "https://demo.example.com/customer/register?redirectTo=%2F" \
   15 \
   /tmp/marketing-data.log \
   --filter=marketingChannels
@@ -56,6 +70,8 @@ The script automatically analyzes and shows:
 - **HTTP status codes** (200, 404, 500, etc.)
 - **Failed requests** with error messages
 - **Top 10 requests** with URLs
+- **Optional JSON summary** with counts, hosts, status breakdown
+- **Console log breakdown** (entries, levels, sample errors) when `--include-console` is enabled
 
 ## 🔍 Manual Usage (Advanced)
 
@@ -76,7 +92,7 @@ PAGE_ID=$(curl -s http://localhost:9222/json | \
 # Step 3: Monitor network
 timeout 10 python3 .claude/skills/browser-debugger/cdp-network.py \
   "$PAGE_ID" \
-  "http://localhost:3000/customer/register?redirectTo=%2F" \
+  "https://demo.example.com/customer/register?redirectTo=%2F" \
   > /tmp/network.log
 
 # Step 4: Cleanup
@@ -97,32 +113,38 @@ Network events are JSON formatted:
 
 ### Finding API Calls
 ```bash
-.claude/skills/browser-debugger/debug-orchestrator.sh "http://localhost:3000/mypage" 15
+.claude/skills/browser-debugger/debug-orchestrator.sh "https://demo.example.com/mypage" 15
 grep "api" /tmp/page-debug.log
 ```
 
 ### Checking for 404s
 ```bash
-.claude/skills/browser-debugger/debug-orchestrator.sh "http://localhost:3000/mypage" 10
+.claude/skills/browser-debugger/debug-orchestrator.sh "https://demo.example.com/mypage" 10
 grep '"status":404' /tmp/page-debug.log
 ```
 
 ### Monitoring Failed Requests
 ```bash
-.claude/skills/browser-debugger/debug-orchestrator.sh "http://localhost:3000/mypage" 10
+.claude/skills/browser-debugger/debug-orchestrator.sh "https://demo.example.com/mypage" 10
 grep 'event.*failed' /tmp/page-debug.log
 ```
 
 ## ⚙️ Parameters
 
 ```bash
-debug-orchestrator.sh <URL> [duration] [output-file] [--filter=pattern]
+debug-orchestrator.sh <URL> [duration] [output-file] \
+  [--filter=pattern] [--summary=text|json|both] \
+  [--include-console] [--console-log=path] [--idle=seconds]
 ```
 
 - **URL** (required): The page to debug
 - **duration** (optional): How long to monitor in seconds (default: 10)
 - **output-file** (optional): Where to save logs (default: /tmp/page-debug.log)
 - **--filter=pattern** (optional): Capture response bodies for URLs matching pattern
+- **--summary=...** (optional): Choose `text` (default), `json`, or `both`
+- **--include-console** (optional): Capture console output alongside network traffic
+- **--console-log=path** (optional): Override the console log file path
+- **--idle=seconds** (optional): Stop once the page has been idle for the specified time (duration still acts as a ceiling)
 
 ### Filter Mode
 
@@ -135,7 +157,7 @@ When you use `--filter`, the script:
 **Example:**
 ```bash
 # Capture marketingChannels API response body
-debug-orchestrator.sh "http://localhost:3000/register" 15 /tmp/out.log --filter=marketingChannels
+debug-orchestrator.sh "https://demo.example.com/register" 15 /tmp/out.log --filter=marketingChannels
 ```
 
 ## 🚨 Troubleshooting
@@ -149,7 +171,7 @@ pkill -f "chrome.*9222"
 ### No network events captured
 - Make sure your localhost server is running
 - Try increasing the duration (some pages load slowly)
-- Check if the page actually loads: `curl http://localhost:3000/your-page`
+- Check if the page actually loads: `curl https://demo.example.com/your-page`
 
 ### "Failed to get page ID"
 - Chrome might not have started fully - increase sleep time

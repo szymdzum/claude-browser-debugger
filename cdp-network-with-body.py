@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
-# cdp-network-with-body.py - Network monitoring with response body capture
-import sys
-import json
+"""Capture Chrome DevTools network traffic including response bodies."""
+
 import asyncio
+import base64
+import json
+import sys
+
 import websockets
+from websockets.exceptions import WebSocketException
 
 if len(sys.argv) < 2:
-    print('Usage: cdp-network-with-body.py <page-id> [url] [--port=9222] [--filter=pattern]', file=sys.stderr)
+    print(
+        'Usage: cdp-network-with-body.py <page-id> [url] '
+        '[--port=9222] [--filter=pattern] [--idle-timeout=seconds]',
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 # Parse arguments
@@ -14,22 +22,31 @@ page_id = sys.argv[1]
 url = None
 port = 9222
 url_filter = None
+idle_timeout = None
 
 for arg in sys.argv[2:]:
     if arg.startswith('--port='):
         port = int(arg.split('=')[1])
     elif arg.startswith('--filter='):
         url_filter = arg.split('=')[1]
+    elif arg.startswith('--idle-timeout='):
+        try:
+            idle_timeout = float(arg.split('=')[1])
+        except ValueError:
+            print('Invalid idle-timeout value', file=sys.stderr)
+            sys.exit(1)
     elif not arg.startswith('--'):
         url = arg
 
-ws_url = f'ws://localhost:{port}/devtools/page/{page_id}'
+WS_URL = f'ws://localhost:{port}/devtools/page/{page_id}'
+
 
 async def monitor_network():
+    """Stream CDP network events, optionally capturing response bodies."""
     msg_id = 1
     response_bodies = {}  # Store request IDs for responses we want to capture
 
-    async with websockets.connect(ws_url) as ws:
+    async with websockets.connect(WS_URL) as ws:
         print(f'Connected to CDP (port {port})', file=sys.stderr)
 
         # Enable network domain
@@ -39,15 +56,26 @@ async def monitor_network():
         # Navigate if URL provided
         if url:
             print(f'Navigating to: {url}', file=sys.stderr)
-            await ws.send(json.dumps({
-                'id': msg_id,
-                'method': 'Page.navigate',
-                'params': {'url': url}
-            }))
+            await ws.send(
+                json.dumps({
+                    'id': msg_id,
+                    'method': 'Page.navigate',
+                    'params': {'url': url},
+                })
+            )
             msg_id += 1
 
         # Listen for messages
-        async for message in ws:
+        while True:
+            try:
+                if idle_timeout:
+                    message = await asyncio.wait_for(ws.recv(), timeout=idle_timeout)
+                else:
+                    message = await ws.recv()
+            except asyncio.TimeoutError:
+                print(f'Idle timeout reached after {idle_timeout} seconds', file=sys.stderr)
+                break
+
             msg = json.loads(message)
 
             # Track requests that match our filter
@@ -61,21 +89,26 @@ async def monitor_network():
                     response_bodies[request_id] = response_url
 
                     # Request the response body
-                    await ws.send(json.dumps({
-                        'id': msg_id,
-                        'method': 'Network.getResponseBody',
-                        'params': {'requestId': request_id}
-                    }))
+                    await ws.send(
+                        json.dumps({
+                            'id': msg_id,
+                            'method': 'Network.getResponseBody',
+                            'params': {'requestId': request_id},
+                        })
+                    )
                     msg_id += 1
 
-                    print(json.dumps({
-                        'event': 'response',
-                        'url': response_url,
-                        'status': response['status'],
-                        'statusText': response['statusText'],
-                        'mimeType': response['mimeType'],
-                        'requestId': request_id
-                    }), flush=True)
+                    print(
+                        json.dumps({
+                            'event': 'response',
+                            'url': response_url,
+                            'status': response['status'],
+                            'statusText': response['statusText'],
+                            'mimeType': response['mimeType'],
+                            'requestId': request_id,
+                        }),
+                        flush=True,
+                    )
 
             # Handle response body
             elif msg.get('result') and 'body' in msg.get('result', {}):
@@ -83,47 +116,60 @@ async def monitor_network():
                 base64_encoded = msg['result'].get('base64Encoded', False)
 
                 if base64_encoded:
-                    import base64
-                    body = base64.b64decode(body).decode('utf-8', errors='ignore')
+                    body = base64.b64decode(body).decode(
+                        'utf-8', errors='ignore'
+                    )
 
-                print(json.dumps({
-                    'event': 'response_body',
-                    'body': body
-                }), flush=True)
+                print(
+                    json.dumps({
+                        'event': 'response_body',
+                        'body': body,
+                    }),
+                    flush=True,
+                )
 
             # Also output regular network events if no filter
             elif not url_filter:
                 if msg.get('method') == 'Network.requestWillBeSent':
-                    print(json.dumps({
-                        'event': 'request',
-                        'url': msg['params']['request']['url'],
-                        'method': msg['params']['request']['method'],
-                        'requestId': msg['params']['requestId']
-                    }), flush=True)
+                    print(
+                        json.dumps({
+                            'event': 'request',
+                            'url': msg['params']['request']['url'],
+                            'method': msg['params']['request']['method'],
+                            'requestId': msg['params']['requestId'],
+                        }),
+                        flush=True,
+                    )
 
                 elif msg.get('method') == 'Network.responseReceived':
                     response = msg['params']['response']
-                    print(json.dumps({
-                        'event': 'response',
-                        'url': response['url'],
-                        'status': response['status'],
-                        'statusText': response['statusText'],
-                        'mimeType': response['mimeType'],
-                        'requestId': msg['params']['requestId']
-                    }), flush=True)
+                    print(
+                        json.dumps({
+                            'event': 'response',
+                            'url': response['url'],
+                            'status': response['status'],
+                            'statusText': response['statusText'],
+                            'mimeType': response['mimeType'],
+                            'requestId': msg['params']['requestId'],
+                        }),
+                        flush=True,
+                    )
 
                 elif msg.get('method') == 'Network.loadingFailed':
-                    print(json.dumps({
-                        'event': 'failed',
-                        'errorText': msg['params']['errorText'],
-                        'requestId': msg['params']['requestId']
-                    }), flush=True)
+                    print(
+                        json.dumps({
+                            'event': 'failed',
+                            'errorText': msg['params']['errorText'],
+                            'requestId': msg['params']['requestId'],
+                        }),
+                        flush=True,
+                    )
 
 if __name__ == '__main__':
     try:
         asyncio.run(monitor_network())
     except KeyboardInterrupt:
         print('\nConnection closed', file=sys.stderr)
-    except Exception as e:
-        print(f'Error: {e}', file=sys.stderr)
+    except WebSocketException as error:
+        print(f'WebSocket error: {error}', file=sys.stderr)
         sys.exit(1)
