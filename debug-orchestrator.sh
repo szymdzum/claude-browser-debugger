@@ -27,7 +27,7 @@ fi
 URL="$1"
 shift
 
-DURATION=10
+DURATION=""
 OUTPUT_FILE="/tmp/page-debug.log"
 SUMMARY_FORMAT="text"
 FILTER=""
@@ -97,6 +97,15 @@ if [ "$INCLUDE_CONSOLE" -eq 1 ] && [ -z "$CONSOLE_LOG" ]; then
         fi
     else
         CONSOLE_LOG="${OUTPUT_FILE}-console.log"
+    fi
+fi
+
+# Set default duration based on mode if not specified
+if [ -z "$DURATION" ]; then
+    if [ "$MODE" = "headed" ]; then
+        DURATION=3600  # 1 hour for interactive debugging
+    else
+        DURATION=10    # 10 seconds for headless automation
     fi
 fi
 
