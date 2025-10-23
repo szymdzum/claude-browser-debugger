@@ -5,7 +5,7 @@
 Debug any page with network monitoring in one command:
 
 ```bash
-.claude/skills/browser-debugger/debug-page.sh "http://localhost:3000/customer/register?redirectTo=%2F"
+.claude/skills/browser-debugger/debug-orchestrator.sh "http://localhost:3000/customer/register?redirectTo=%2F"
 ```
 
 That's it! The script will:
@@ -20,14 +20,14 @@ That's it! The script will:
 
 ### Debug registration page (10 seconds)
 ```bash
-.claude/skills/browser-debugger/debug-page.sh \
+.claude/skills/browser-debugger/debug-orchestrator.sh \
   "http://localhost:3000/customer/register?redirectTo=%2F" \
   10
 ```
 
 ### Debug checkout with custom log file
 ```bash
-.claude/skills/browser-debugger/debug-page.sh \
+.claude/skills/browser-debugger/debug-orchestrator.sh \
   "http://localhost:3000/checkout" \
   15 \
   /tmp/checkout-network.log
@@ -35,14 +35,14 @@ That's it! The script will:
 
 ### Debug production site
 ```bash
-.claude/skills/browser-debugger/debug-page.sh \
+.claude/skills/browser-debugger/debug-orchestrator.sh \
   "https://www.castorama.pl/customer/login" \
   20
 ```
 
 ### Capture specific API response bodies
 ```bash
-.claude/skills/browser-debugger/debug-page.sh \
+.claude/skills/browser-debugger/debug-orchestrator.sh \
   "http://localhost:3000/customer/register?redirectTo=%2F" \
   15 \
   /tmp/marketing-data.log \
@@ -97,26 +97,26 @@ Network events are JSON formatted:
 
 ### Finding API Calls
 ```bash
-.claude/skills/browser-debugger/debug-page.sh "http://localhost:3000/mypage" 15
+.claude/skills/browser-debugger/debug-orchestrator.sh "http://localhost:3000/mypage" 15
 grep "api" /tmp/page-debug.log
 ```
 
 ### Checking for 404s
 ```bash
-.claude/skills/browser-debugger/debug-page.sh "http://localhost:3000/mypage" 10
+.claude/skills/browser-debugger/debug-orchestrator.sh "http://localhost:3000/mypage" 10
 grep '"status":404' /tmp/page-debug.log
 ```
 
 ### Monitoring Failed Requests
 ```bash
-.claude/skills/browser-debugger/debug-page.sh "http://localhost:3000/mypage" 10
+.claude/skills/browser-debugger/debug-orchestrator.sh "http://localhost:3000/mypage" 10
 grep 'event.*failed' /tmp/page-debug.log
 ```
 
 ## ⚙️ Parameters
 
 ```bash
-debug-page.sh <URL> [duration] [output-file] [--filter=pattern]
+debug-orchestrator.sh <URL> [duration] [output-file] [--filter=pattern]
 ```
 
 - **URL** (required): The page to debug
@@ -135,7 +135,7 @@ When you use `--filter`, the script:
 **Example:**
 ```bash
 # Capture marketingChannels API response body
-debug-page.sh "http://localhost:3000/register" 15 /tmp/out.log --filter=marketingChannels
+debug-orchestrator.sh "http://localhost:3000/register" 15 /tmp/out.log --filter=marketingChannels
 ```
 
 ## 🚨 Troubleshooting

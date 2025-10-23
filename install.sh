@@ -91,7 +91,7 @@ else
 
     # Copy all necessary files
     for file in SKILL.md README.md QUICK-START.md install.sh \
-                cdp-console.py cdp-network.py cdp-network-with-body.py debug-page.sh; do
+                cdp-console.py cdp-network.py cdp-network-with-body.py debug-orchestrator.sh; do
         if [ -f "$SCRIPT_DIR/$file" ]; then
             cp "$SCRIPT_DIR/$file" "$TARGET_DIR/"
             # Make scripts executable

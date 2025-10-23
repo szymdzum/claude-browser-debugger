@@ -1,12 +1,12 @@
 #!/bin/bash
-# debug-page.sh - Flexible page debugging with CDP
-# Usage: ./debug-page.sh <URL> [duration] [output-file] [--filter=pattern]
+# debug-orchestrator.sh - Flexible page debugging with CDP
+# Usage: ./debug-orchestrator.sh <URL> [duration] [output-file] [--filter=pattern]
 #
 # Examples:
-#   ./debug-page.sh "http://localhost:3000/customer/register?redirectTo=%2F"
-#   ./debug-page.sh "http://localhost:3000/login" 10
-#   ./debug-page.sh "http://localhost:3000/checkout" 15 /tmp/checkout-debug.log
-#   ./debug-page.sh "http://localhost:3000/register" 15 /tmp/out.log --filter=marketingChannels
+#   ./debug-orchestrator.sh "http://localhost:3000/customer/register?redirectTo=%2F"
+#   ./debug-orchestrator.sh "http://localhost:3000/login" 10
+#   ./debug-orchestrator.sh "http://localhost:3000/checkout" 15 /tmp/checkout-debug.log
+#   ./debug-orchestrator.sh "http://localhost:3000/register" 15 /tmp/out.log --filter=marketingChannels
 
 set -e
 
