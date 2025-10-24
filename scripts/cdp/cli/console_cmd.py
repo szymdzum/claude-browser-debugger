@@ -7,6 +7,7 @@ Implements 'console stream' command to monitor console messages.
 import argparse
 import asyncio
 import sys
+from pathlib import Path
 
 from ..session import CDPSession
 from ..collectors.console import ConsoleCollector
@@ -55,7 +56,7 @@ async def console_stream_handler_async(args: argparse.Namespace) -> int:
                 # Create console collector
                 collector = ConsoleCollector(
                     connection=conn,
-                    output_file=args.output if hasattr(args, "output") and args.output else None,
+                    output_path=Path(args.output) if hasattr(args, "output") and args.output else None,
                     level_filter=args.level if hasattr(args, "level") else None,
                 )
 
@@ -73,9 +74,9 @@ async def console_stream_handler_async(args: argparse.Namespace) -> int:
 
                     await collector.stop()
 
-                if not args.quiet:
+                if not args.quiet and collector.output_path:
                     print(
-                        f"Console logs saved to: {collector.output_file}",
+                        f"Console logs saved to: {collector.output_path}",
                         file=sys.stderr,
                     )
 
@@ -87,7 +88,7 @@ async def console_stream_handler_async(args: argparse.Namespace) -> int:
             # Create console collector
             collector = ConsoleCollector(
                 connection=conn,
-                output_file=args.output if hasattr(args, "output") and args.output else None,
+                output_path=Path(args.output) if hasattr(args, "output") and args.output else None,
                 level_filter=args.level if hasattr(args, "level") else None,
             )
 
@@ -105,9 +106,9 @@ async def console_stream_handler_async(args: argparse.Namespace) -> int:
 
                 await collector.stop()
 
-            if not args.quiet:
+            if not args.quiet and collector.output_path:
                 print(
-                    f"Console logs saved to: {collector.output_file}", file=sys.stderr
+                    f"Console logs saved to: {collector.output_path}", file=sys.stderr
                 )
 
         return 0
