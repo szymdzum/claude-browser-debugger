@@ -38,6 +38,7 @@ IDLE_TIMEOUT=""
 MODE="headless"
 PORT="9222"
 PROFILE=""
+SKIP_VALIDATION="false"
 
 if [ $# -gt 0 ] && [[ $1 != --* ]]; then
     DURATION="$1"
@@ -75,6 +76,9 @@ while [ $# -gt 0 ]; do
             ;;
         --profile=*)
             PROFILE="${1#--profile=}"
+            ;;
+        --skip-validation)
+            SKIP_VALIDATION="true"
             ;;
         *)
             echo "Unknown option: $1"
@@ -127,6 +131,81 @@ if [ -n "$IDLE_TIMEOUT" ]; then
     echo "   Idle timeout: ${IDLE_TIMEOUT}s"
 fi
 echo ""
+
+# ============================================================================
+# URL Validation Function
+# ============================================================================
+
+validate_url() {
+    local url=$1
+    local start_time=$(python3 -c "import time; print(int(time.time() * 1000))")
+
+    echo "🔍 Validating URL: $url" >&2
+
+    # Execute curl and capture both status code and exit code
+    local http_code
+    http_code=$(curl --max-time 5 --connect-timeout 3 --location --silent \
+        --output /dev/null --write-out "%{http_code}" "$url" 2>&1)
+    local curl_exit=$?
+
+    local end_time=$(python3 -c "import time; print(int(time.time() * 1000))")
+    local validation_time=$((end_time - start_time))
+
+    # Check curl exit code first (network-level errors)
+    if [ $curl_exit -ne 0 ]; then
+        echo "❌ URL validation failed" >&2
+        case $curl_exit in
+            6)
+                echo "   Error: DNS resolution failed for $url" >&2
+                echo "   Recovery: Check URL and network connection, or use --skip-validation to bypass" >&2
+                ;;
+            7)
+                echo "   Error: Connection refused to $url" >&2
+                echo "   Recovery: Check if server is running, or use --skip-validation to bypass" >&2
+                ;;
+            28)
+                echo "   Error: Connection timeout after 5 seconds for $url" >&2
+                echo "   Recovery: Check URL and network connection, or use --skip-validation to bypass" >&2
+                ;;
+            35)
+                echo "   Error: SSL/TLS handshake failed for $url" >&2
+                echo "   Recovery: Check certificate validity, or use --skip-validation to bypass" >&2
+                ;;
+            *)
+                echo "   Error: curl failed with exit code $curl_exit for $url" >&2
+                echo "   Recovery: Check URL and network connection, or use --skip-validation to bypass" >&2
+                ;;
+        esac
+        return 1
+    fi
+
+    # Check HTTP status code (application-level errors)
+    if [[ "$http_code" =~ ^[23][0-9][0-9]$ ]]; then
+        echo "✅ URL validation passed (HTTP $http_code) in ${validation_time}ms" >&2
+        return 0
+    else
+        echo "❌ URL validation failed" >&2
+        echo "   Error: URL returned HTTP $http_code" >&2
+        echo "   Recovery: Fix URL or use --skip-validation to bypass" >&2
+        return 1
+    fi
+}
+
+# ============================================================================
+# Pre-flight URL Validation
+# ============================================================================
+
+if [ "$SKIP_VALIDATION" != "true" ]; then
+    if ! validate_url "$URL"; then
+        echo "" >&2
+        echo "💡 Tip: Use --skip-validation to bypass URL validation for intentionally unreachable URLs" >&2
+        exit 1
+    fi
+    echo "" >&2
+else
+    echo "⚠️  URL validation skipped (--skip-validation flag)" >&2
+    echo "" >&2
+fi
 
 # Step 1: Launch Chrome using chrome-launcher.sh
 echo "🚀 Launching Chrome..."
@@ -207,7 +286,7 @@ summarize_log() {
         args+=("--include-console" "--console" "$CONSOLE_LOG")
     fi
 
-    python3 "${SCRIPT_DIR}/summarize.py" "${args[@]}"
+    python3 "${SCRIPT_DIR}/cdp-summarize.py" "${args[@]}"
 }
 
 NETWORK_SCRIPT="${SCRIPT_DIR}/cdp-network.py"

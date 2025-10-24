@@ -89,9 +89,11 @@ else
     echo "📄 Copying files..."
     mkdir -p "$TARGET_DIR"
 
-    # Copy all necessary files
-    for file in SKILL.md README.md QUICK-START.md install.sh \
-                cdp-console.py cdp-network.py cdp-network-with-body.py debug-orchestrator.sh summarize.py; do
+    # Copy all necessary runtime files
+    for file in SKILL.md README.md install.sh \
+                chrome-launcher.sh debug-orchestrator.sh \
+                cdp-console.py cdp-network.py cdp-network-with-body.py cdp-dom-monitor.py \
+                cdp-summarize.py; do
         if [ -f "$SCRIPT_DIR/$file" ]; then
             cp "$SCRIPT_DIR/$file" "$TARGET_DIR/"
             # Make scripts executable
@@ -222,9 +224,6 @@ echo "  • 'What API calls does https://example.com make?'"
 echo ""
 echo "📖 View skill details:"
 echo "   cat ${TARGET_DIR}/SKILL.md"
-echo ""
-echo "📚 Quick start guide:"
-echo "   cat ${TARGET_DIR}/QUICK-START.md"
 echo ""
 echo "🧪 Test manually:"
 echo "   chrome --headless=new --dump-dom https://example.com"
