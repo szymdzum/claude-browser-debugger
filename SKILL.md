@@ -36,6 +36,13 @@ The orchestrator and launcher scripts handle this automatically. If you're launc
 chrome --remote-debugging-port=9222 URL
 
 # ✅ CORRECT (Works with Chrome 136+)
+PROFILE="$HOME/.chrome-debug-profile"
+chrome --user-data-dir="$PROFILE" --remote-debugging-port=9222 URL
+
+# ✅ Also valid: provide an explicit absolute path
+chrome --user-data-dir="/Users/username/.chrome-debug-profile" --remote-debugging-port=9222 URL
+
+# ❌ WRONG - tilde is not expanded inside the flag value
 chrome --user-data-dir=~/.chrome-debug-profile --remote-debugging-port=9222 URL
 ```
 
@@ -87,6 +94,8 @@ sleep 2
 ```bash
 PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[] | select(.type == "page") | .id' | head -1)
 ```
+
+> **Tip:** Page IDs change after navigation, tab refreshes, or when new targets appear. Re-run this command (optionally filtering by `.url`) before each capture instead of reusing stale IDs.
 
 **Step 4: Monitor console**
 ```bash
@@ -141,7 +150,7 @@ This will:
 - **Stays open indefinitely** - no automatic timeout (close manually when done)
 - You can **type, click, and interact** normally
 - Console logs and network activity are captured in real-time
-- Uses persistent profile at `~/.chrome-debug-profile`
+- Uses persistent profile at `$HOME/.chrome-debug-profile`
 
 **Use cases:**
 - Testing form interactions (login, signup, checkout)
@@ -309,7 +318,9 @@ chmod +x cdp-network.py
 ```bash
 chrome --headless=new --remote-debugging-port=9222 https://example.com &
 sleep 2
-PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
+PAGE_ID=$(curl -s http://localhost:9222/json \
+  | jq -r '.[] | select(.type == "page") | .id' \
+  | head -1)
 timeout 10 python3 cdp-console.py $PAGE_ID | grep '"type":"error"'
 pkill -f "chrome.*9222"
 ```
@@ -319,7 +330,9 @@ pkill -f "chrome.*9222"
 ```bash
 chrome --headless=new --remote-debugging-port=9222 https://example.com &
 sleep 2
-PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
+PAGE_ID=$(curl -s http://localhost:9222/json \
+  | jq -r '.[] | select(.type == "page") | .id' \
+  | head -1)
 timeout 10 python3 cdp-network.py $PAGE_ID | grep 'api.example.com'
 pkill -f "chrome.*9222"
 ```
@@ -341,7 +354,13 @@ chrome --headless=new --dump-dom $URL
 # Monitor console
 chrome --headless=new --remote-debugging-port=9222 $URL &
 sleep 2
-PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
+PAGE_ID=$(curl -s http://localhost:9222/json \
+  | jq -r '.[] | select(.type == "page") | .id' \
+  | head -1)
+# Optional: narrow to a specific URL if multiple tabs are open
+# PAGE_ID=$(curl -s http://localhost:9222/json \
+#   | jq -r '.[] | select(.type == "page" and (.url | contains("localhost:3000"))) | .id' \
+#   | head -1)
 python3 cdp-console.py $PAGE_ID
 
 # Monitor network
@@ -431,7 +450,9 @@ For troubleshooting CDP connection issues:
 
 ```bash
 # Get page ID first
-PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
+PAGE_ID=$(curl -s http://localhost:9222/json \
+  | jq -r '.[] | select(.type == "page") | .id' \
+  | head -1)
 
 # Run diagnostic with full logging
 PYTHONASYNCIODEBUG=1 python3 scripts/diagnostics/debug-cdp-connection.py $PAGE_ID 9222
@@ -452,7 +473,8 @@ PYTHONASYNCIODEBUG=1 python3 scripts/diagnostics/debug-cdp-connection.py $PAGE_I
 **Solution:** Ensure you're using `chrome-launcher.sh` or `debug-orchestrator.sh`, which handle this automatically. If launching Chrome manually, always include `--user-data-dir`:
 
 ```bash
-chrome --user-data-dir=~/.chrome-debug-profile --remote-debugging-port=9222 URL
+PROFILE="$HOME/.chrome-debug-profile"
+chrome --user-data-dir="$PROFILE" --remote-debugging-port=9222 URL
 ```
 
 **See:** `docs/headed-mode/CHROME-136-CDP-INCIDENT.md` for full details.

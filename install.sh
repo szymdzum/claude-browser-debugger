@@ -90,7 +90,7 @@ else
     mkdir -p "$TARGET_DIR"
 
     # Copy all necessary files
-    for file in SKILL.md README.md QUICK-START.md install.sh \
+    for file in SKILL.md README.md install.sh \
                 cdp-console.py cdp-network.py cdp-network-with-body.py debug-orchestrator.sh summarize.py; do
         if [ -f "$SCRIPT_DIR/$file" ]; then
             cp "$SCRIPT_DIR/$file" "$TARGET_DIR/"
@@ -222,9 +222,6 @@ echo "  • 'What API calls does https://example.com make?'"
 echo ""
 echo "📖 View skill details:"
 echo "   cat ${TARGET_DIR}/SKILL.md"
-echo ""
-echo "📚 Quick start guide:"
-echo "   cat ${TARGET_DIR}/QUICK-START.md"
 echo ""
 echo "🧪 Test manually:"
 echo "   chrome --headless=new --dump-dom https://example.com"
