@@ -15,7 +15,7 @@ Use browser-debugger skill to capture the DOM of http://localhost:3000 in headle
 
 ### Scenario 2: Interactive Registration Flow (Headed)
 ```
-Use browser-debugger skill to launch http://localhost:3000/register in headed mode. Let me fill out the registration form manually, then extract the DOM and console logs after I'm done.
+Use browser-debugger skill to launch http://localhost:3000/customer/register in headed mode. Let me fill out the registration form manually, then extract the DOM and console logs after I'm done.
 ```
 
 **Expected workflow:** Launch visible Chrome → User fills form → Agent waits → Extract DOM on demand → Keep Chrome open for follow-up

@@ -13,6 +13,77 @@
 
 set -e
 
+# ============================================================================
+# Helper Functions (T004, T005: Foundational infrastructure)
+# ============================================================================
+
+# Generate JSON error message with recovery hints
+generate_error_json() {
+    local code="$1"
+    local message="$2"
+    local recovery="$3"
+
+    cat <<EOF
+{
+  "status": "error",
+  "code": "$code",
+  "message": "$message",
+  "recovery": "$recovery"
+}
+EOF
+}
+
+# Fetch WebSocket URL from CDP
+fetch_websocket_url() {
+    local port="$1"
+    curl -s "http://localhost:${port}/json" | jq -r '.[0].webSocketDebuggerUrl' 2>/dev/null
+}
+
+# Generate success JSON
+generate_success_json() {
+    local data="$1"
+    echo "$data" | jq '. + {status: "success"}' 2>/dev/null
+}
+
+# Display ready notification for headed mode (T007-T012: US1)
+display_ready_notification() {
+    local url="$1"
+    local duration="$2"
+    local output_file="$3"
+    local chrome_pid="$4"
+    local ws_url="$5"
+    local profile="$6"
+    local include_console="$7"
+
+    local timeout_minutes=$((duration / 60))
+
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🎉 CHROME WINDOW IS NOW OPEN AND READY!"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "📍 URL: $url"
+    echo "⏱️  Session timeout: ${timeout_minutes} minutes (${duration}s)"
+
+    if [ "$include_console" -eq 1 ]; then
+        echo "🔍 Monitoring: Network + Console logs"
+    else
+        echo "🔍 Monitoring: Network logs"
+    fi
+
+    echo "💾 Output: $output_file"
+    echo ""
+    echo "🔧 Debug Info:"
+    echo "   Chrome PID: $chrome_pid"
+    echo "   Profile: $profile"
+    echo ""
+    echo "💬 You can now interact with the page."
+    echo "   When you're done, let me know and I'll extract the final state."
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+}
+
 # Parse arguments
 if [ -z "$1" ]; then
     echo "Usage: $0 <URL> [duration] [output-file]"
@@ -256,17 +327,21 @@ RESOLVED_PORT=$(echo "$LAUNCHER_JSON" | jq -r '.port')
 PAGE_ID=$(echo "$LAUNCHER_JSON" | jq -r '.page_id')
 CHROME_PID=$(echo "$LAUNCHER_JSON" | jq -r '.pid')
 RESOLVED_PROFILE=$(echo "$LAUNCHER_JSON" | jq -r '.profile')
+WS_URL=$(fetch_websocket_url "$RESOLVED_PORT")
 
-echo ""
-echo "✅ Chrome launched successfully"
-echo "   PID: $CHROME_PID"
-echo "   Port: $RESOLVED_PORT"
-echo "   Page ID: $PAGE_ID"
+# T008-T012: Display appropriate notification based on mode
 if [ "$MODE" = "headed" ]; then
-    echo "   Profile: $RESOLVED_PROFILE"
-    echo "   💡 You can now interact with the visible Chrome window"
+    # Headed mode: Show prominent ready notification
+    display_ready_notification "$URL" "$DURATION" "$OUTPUT_FILE" "$CHROME_PID" "$WS_URL" "$RESOLVED_PROFILE" "$INCLUDE_CONSOLE"
+else
+    # Headless mode: Show minimal success message
+    echo ""
+    echo "✅ Chrome launched successfully"
+    echo "   PID: $CHROME_PID"
+    echo "   Port: $RESOLVED_PORT"
+    echo "   Page ID: $PAGE_ID"
+    echo ""
 fi
-echo ""
 
 # Step 2: Monitor network traffic
 echo "📡 Monitoring network traffic for ${DURATION}s..."

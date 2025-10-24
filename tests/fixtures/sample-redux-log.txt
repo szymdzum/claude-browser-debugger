@@ -1,0 +1,11 @@
+action @app/customer/updateTempEmail @ 14:32:05.123
+ prev state {"customer": {"tempEmail": null, "isLoggedIn": false}}
+ next state {"customer": {"tempEmail": "test@example.com", "isLoggedIn": false}}
+
+action @GDPRMarketing/getMarketingChannelsSuccess @ 14:32:12.456
+ prev state {"GDPRMarketing": {"channels": [], "loading": true}}
+ next state {"GDPRMarketing": {"channels": [{"id": 1, "name": "Email"}, {"id": 2, "name": "SMS"}], "loading": false}}
+
+action @app/auth/loginSuccess @ 14:32:18.789
+ prev state {"customer": {"tempEmail": "test@example.com", "isLoggedIn": false}, "auth": {"token": null}}
+ next state {"customer": {"tempEmail": "test@example.com", "isLoggedIn": true}, "auth": {"token": "abc123xyz"}}
