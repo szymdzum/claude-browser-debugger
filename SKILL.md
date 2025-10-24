@@ -50,7 +50,7 @@ chrome --user-data-dir="$PROFILE" --remote-debugging-port=9222 URL
 
 **Why:** Chrome 136+ security policy blocks CDP access to your default user profile to prevent cookie/credential theft.
 
-**For detailed Chrome 136 requirements, troubleshooting, and technical background, see [docs/headed-mode/CHROME-136-CDP-INCIDENT.md](docs/headed-mode/CHROME-136-CDP-INCIDENT.md)**
+**For detailed Chrome 136 requirements, troubleshooting, and technical background, see [docs/guides/chrome-136-incident.md](docs/guides/chrome-136-incident.md)**
 
 ## Quick Start
 
@@ -246,7 +246,7 @@ echo '{"id":2,"method":"Runtime.evaluate","params":{"expression":"document.docum
 grep -i 'error\|invalid\|failed' /tmp/dom-after.html
 ```
 
-**For complete workflow documentation, advanced patterns, and examples, see [docs/workflows.md](docs/workflows.md)**
+**For complete workflow documentation, advanced patterns, and examples, see [docs/guides/workflows.md](docs/guides/workflows.md)**
 
 ## Ad-hoc CDP Commands with websocat
 
@@ -279,7 +279,7 @@ echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"document.cooki
 - Use `-n1` to close after 1 message (request/response pattern)
 - Other useful CDP methods: `Page.captureScreenshot`, `Network.getAllCookies`, `Accessibility.getFullAXTree`
 
-**For complete CDP command reference, see [specs/001-interactive-dom-access/contracts/cdp-commands.md](specs/001-interactive-dom-access/contracts/cdp-commands.md)**
+**For complete CDP command reference, see [docs/reference/cdp-commands.md](docs/reference/cdp-commands.md)**
 
 ## Quick Troubleshooting
 
@@ -323,7 +323,7 @@ PROFILE="$HOME/.chrome-debug-profile"
 chrome --user-data-dir="$PROFILE" --remote-debugging-port=9222 URL
 ```
 
-**For comprehensive troubleshooting, error handling, and edge cases, see [docs/troubleshooting.md](docs/troubleshooting.md)**
+**For comprehensive troubleshooting, error handling, and edge cases, see [docs/guides/troubleshooting.md](docs/guides/troubleshooting.md)**
 
 ## Documentation
 
@@ -333,24 +333,17 @@ Complete reference documentation:
 - **[README.md](README.md)** - Installation, capabilities, and maintainer guide
 - **[scripts/README.md](scripts/README.md)** - Script usage, parameters, and examples
 
-### Feature Specifications
-- **[specs/001-interactive-dom-access/spec.md](specs/001-interactive-dom-access/spec.md)** - User stories and requirements
-- **[specs/001-interactive-dom-access/plan.md](specs/001-interactive-dom-access/plan.md)** - Technical design and architecture
-- **[specs/001-interactive-dom-access/tasks.md](specs/001-interactive-dom-access/tasks.md)** - Implementation task breakdown
-- **[specs/001-interactive-dom-access/quickstart.md](specs/001-interactive-dom-access/quickstart.md)** - 4-phase workflow guide
-- **[specs/001-interactive-dom-access/data-model.md](specs/001-interactive-dom-access/data-model.md)** - Entity definitions
-- **[specs/001-interactive-dom-access/research.md](specs/001-interactive-dom-access/research.md)** - Technology decisions
 
 ### Technical References
-- **[docs/headed-mode/CHROME-136-CDP-INCIDENT.md](docs/headed-mode/CHROME-136-CDP-INCIDENT.md)** - Chrome 136 security policy change, investigation, solution
-- **[docs/headed-mode/LAUNCHER_CONTRACT.md](docs/headed-mode/LAUNCHER_CONTRACT.md)** - chrome-launcher.sh API specification
-- **[docs/headed-mode/INTERACTIVE_WORKFLOW_DESIGN.md](docs/headed-mode/INTERACTIVE_WORKFLOW_DESIGN.md)** - Headed mode design rationale
-- **[docs/websocat-analisys.md](docs/websocat-analisys.md)** - WebSocket/CDP internals and buffer tuning
-- **[specs/001-interactive-dom-access/contracts/cdp-commands.md](specs/001-interactive-dom-access/contracts/cdp-commands.md)** - Complete CDP command reference
+- **[docs/guides/chrome-136-incident.md](docs/guides/chrome-136-incident.md)** - Chrome 136 security policy change, investigation, solution
+- **[docs/guides/launcher-contract.md](docs/guides/launcher-contract.md)** - chrome-launcher.sh API specification
+- **[docs/guides/interactive-workflow-design.md](docs/guides/interactive-workflow-design.md)** - Headed mode design rationale
+- **[docs/reference/websocat-analysis.md](docs/reference/websocat-analysis.md)** - WebSocket/CDP internals and buffer tuning
+- **[docs/reference/cdp-commands.md](docs/reference/cdp-commands.md)** - Complete CDP command reference
 
 ### Workflow Documentation
-- **[docs/workflows.md](docs/workflows.md)** - Detailed workflow patterns and examples
-- **[docs/troubleshooting.md](docs/troubleshooting.md)** - Error handling, recovery patterns, and edge cases
+- **[docs/guides/workflows.md](docs/guides/workflows.md)** - Detailed workflow patterns and examples
+- **[docs/guides/troubleshooting.md](docs/guides/troubleshooting.md)** - Error handling, recovery patterns, and edge cases
 
 ### Spec-Kit Integration
 - **[docs/skills.md](docs/skills.md)** - Skill development guide
@@ -438,8 +431,8 @@ The skill is designed for quick telemetry capture with minimal dependencies (Pyt
 - Condensed SKILL.md from 1114 to ~480 lines (57% reduction)
 - Applied progressive disclosure pattern: overview → details via links
 - Reorganized scripts into scripts/core/, scripts/collectors/, scripts/utilities/
-- Moved detailed workflows to docs/workflows.md
-- Moved comprehensive troubleshooting to docs/troubleshooting.md
+- Moved detailed workflows to docs/guides/workflows.md
+- Moved comprehensive troubleshooting to docs/guides/troubleshooting.md
 - Added Documentation section with complete reference index
 - Improved Quick Start section with minimal but complete examples
 - Maintained all essential content (prerequisites, Chrome 136 note, basic workflows)

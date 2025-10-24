@@ -887,7 +887,7 @@ If issues persist after following this guide:
    - CDP Commands: `docs/cdp-commands.md`
 
 3. **Incident reports:**
-   - Chrome 136 CDP incident: `docs/headed-mode/CHROME-136-CDP-INCIDENT.md`
+   - Chrome 136 CDP incident: `docs/guides/chrome-136-incident.md`
 
 4. **Test scripts:**
    - Smoke test: `tests/smoke-test-headed.sh`
@@ -899,5 +899,5 @@ If issues persist after following this guide:
 - **Chrome 136+ Requirements:** `docs/chrome-136-requirements.md`
 - **Workflows:** `docs/workflows.md`
 - **CDP Commands:** `docs/cdp-commands.md`
-- **Chrome 136 Incident Report:** `docs/headed-mode/CHROME-136-CDP-INCIDENT.md`
+- **Chrome 136 Incident Report:** `docs/guides/chrome-136-incident.md`
 - **WebSocket Internals:** `docs/websocat-analisys.md`

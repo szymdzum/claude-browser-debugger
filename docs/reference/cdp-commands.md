@@ -662,6 +662,5 @@ echo '{"id":1,"method":"Browser.getVersion"}' | websocat -n1 "$WS_URL" | jq
 
 - **Workflows:** `docs/workflows.md` - Full workflow examples
 - **Chrome 136+ Requirements:** `docs/chrome-136-requirements.md`
-- **Troubleshooting:** `docs/troubleshooting.md`
-- **CDP Command Contracts:** `specs/001-interactive-dom-access/contracts/cdp-commands.md`
-- **WebSocket Internals:** `docs/websocat-analisys.md`
+- **Troubleshooting:** `docs/guides/troubleshooting.md`
+- **WebSocket Internals:** `docs/reference/websocat-analysis.md`

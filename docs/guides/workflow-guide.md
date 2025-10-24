@@ -332,7 +332,7 @@ jq '.[] | {name, value, type}' /tmp/register-state/form-data.json
 
 ## Next Steps
 
-- **Filter flag usage**: See [FILTER_FLAG_GUIDE.md](./FILTER_FLAG_GUIDE.md) for selective network body capture
+- **Filter flag usage**: See [filter-flag-guide.md](./filter-flag-guide.md) for selective network body capture
 - **Automation**: Create bash functions for common testing sequences
 - **CI integration**: Use headless mode for automated regression tests
 - **Advanced debugging**: Combine state snapshots with network logs and console output
@@ -341,7 +341,5 @@ jq '.[] | {name, value, type}' /tmp/register-state/form-data.json
 
 ## Related Documentation
 
-- [Filter Flag Guide](./FILTER_FLAG_GUIDE.md) - Network body capture patterns
-- [Chrome Launcher Contract](./LAUNCHER_CONTRACT.md) - chrome-launcher.sh API
-- [Stage Test Results](../002-stage-test-result.md) - Original UX findings
-- [Feature Quickstart](../../specs/001-interactive-dom-access/quickstart.md) - Original workflow
+- [Filter Flag Guide](./filter-flag-guide.md) - Network body capture patterns
+- [Chrome Launcher Contract](./launcher-contract.md) - chrome-launcher.sh API

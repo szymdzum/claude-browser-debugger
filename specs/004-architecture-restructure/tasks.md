@@ -64,11 +64,11 @@
 
 ### Implementation for User Story 1
 
-- [x] T016 [P] [US1] Extract Chrome 136 requirements section from SKILL.md and create docs/chrome-136-requirements.md
-- [x] T017 [P] [US1] Extract workflows section from SKILL.md and create docs/workflows.md
-- [x] T018 [P] [US1] Extract CDP commands section from SKILL.md and create docs/cdp-commands.md
-- [x] T019 [P] [US1] Extract troubleshooting section from SKILL.md and create docs/troubleshooting.md
-- [x] T020 [US1] Rewrite SKILL.md to under 500 lines with progressive disclosure links to docs/chrome-136-requirements.md, docs/workflows.md, docs/cdp-commands.md, docs/troubleshooting.md
+- [x] T016 [P] [US1] Extract Chrome 136 requirements section from SKILL.md and create docs/reference/chrome-136-requirements.md
+- [x] T017 [P] [US1] Extract workflows section from SKILL.md and create docs/guides/workflows.md
+- [x] T018 [P] [US1] Extract CDP commands section from SKILL.md and create docs/reference/cdp-commands.md
+- [x] T019 [P] [US1] Extract troubleshooting section from SKILL.md and create docs/guides/troubleshooting.md
+- [x] T020 [US1] Rewrite SKILL.md to under 500 lines with progressive disclosure links to docs/reference/chrome-136-requirements.md, docs/guides/workflows.md, docs/reference/cdp-commands.md, docs/guides/troubleshooting.md
 - [x] T021 [US1] Verify SKILL.md is under 500 lines and all reference links work correctly
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - SKILL.md <500 lines with working progressive disclosure pattern
@@ -95,15 +95,15 @@
 
 **Goal**: Enable maintainers to update reference files in docs/ without touching SKILL.md or breaking existing references
 
-**Independent Test**: Add new content to docs/workflows.md and verify SKILL.md references work correctly without modification. Verify reference files have table of contents if >100 lines.
+**Independent Test**: Add new content to docs/guides/workflows.md and verify SKILL.md references work correctly without modification. Verify reference files have table of contents if >100 lines.
 
 ### Implementation for User Story 3
 
-- [x] T025 [P] [US3] Add table of contents to docs/workflows.md (if >100 lines per FR-013)
-- [x] T026 [P] [US3] Add table of contents to docs/cdp-commands.md (if >100 lines per FR-013)
-- [x] T027 [P] [US3] Add table of contents to docs/troubleshooting.md (if >100 lines per FR-013)
+- [x] T025 [P] [US3] Add table of contents to docs/guides/workflows.md (if >100 lines per FR-013)
+- [x] T026 [P] [US3] Add table of contents to docs/reference/cdp-commands.md (if >100 lines per FR-013)
+- [x] T027 [P] [US3] Add table of contents to docs/guides/troubleshooting.md (if >100 lines per FR-013)
 - [x] T028 [US3] Verify all reference files follow one-level deep pattern from SKILL.md (no nested references)
-- [x] T029 [US3] Test adding new section to docs/workflows.md and verify SKILL.md link resolves to file, new content is accessible, and SKILL.md requires no modification
+- [x] T029 [US3] Test adding new section to docs/guides/workflows.md and verify SKILL.md link resolves to file, new content is accessible, and SKILL.md requires no modification
 
 **Checkpoint**: All user stories should now be independently functional - maintainable documentation structure validated
 
@@ -166,7 +166,7 @@
 
 - **User Story 1 (P1)**: Can start after Foundational (Phase 2) - Creates reference documentation files
 - **User Story 2 (P1)**: Can start after Foundational (Phase 2) - Needs US1 complete for SKILL.md reference link update (T023 depends on T020)
-- **User Story 3 (P2)**: Can start after US1 (needs docs/workflows.md, docs/cdp-commands.md, docs/troubleshooting.md from T016-T019)
+- **User Story 3 (P2)**: Can start after US1 (needs docs/guides/workflows.md, docs/reference/cdp-commands.md, docs/guides/troubleshooting.md from T016-T019)
 - **User Story 4 (P3)**: Can start after Foundational (Phase 2) - Independent of other user stories (different files)
 
 ### Within Each User Story
@@ -207,10 +207,10 @@
 
 ```bash
 # Launch all extract tasks for User Story 1 together:
-Task: "Extract Chrome 136 requirements section from SKILL.md and create docs/chrome-136-requirements.md"
-Task: "Extract workflows section from SKILL.md and create docs/workflows.md"
-Task: "Extract CDP commands section from SKILL.md and create docs/cdp-commands.md"
-Task: "Extract troubleshooting section from SKILL.md and create docs/troubleshooting.md"
+Task: "Extract Chrome 136 requirements section from SKILL.md and create docs/reference/chrome-136-requirements.md"
+Task: "Extract workflows section from SKILL.md and create docs/guides/workflows.md"
+Task: "Extract CDP commands section from SKILL.md and create docs/reference/cdp-commands.md"
+Task: "Extract troubleshooting section from SKILL.md and create docs/guides/troubleshooting.md"
 
 # Then sequentially:
 Task: "Rewrite SKILL.md to under 500 lines with progressive disclosure links"
