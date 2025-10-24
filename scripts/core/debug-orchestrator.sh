@@ -160,6 +160,30 @@ while [ $# -gt 0 ]; do
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+COLLECTORS_DIR="${REPO_ROOT}/scripts/collectors"
+
+# Verify collector scripts exist before proceeding (FR-002)
+REQUIRED_COLLECTORS=(
+    "${COLLECTORS_DIR}/cdp-network.py"
+    "${COLLECTORS_DIR}/cdp-network-with-body.py"
+    "${COLLECTORS_DIR}/cdp-summarize.py"
+)
+
+if [ "$INCLUDE_CONSOLE" -eq 1 ]; then
+    REQUIRED_COLLECTORS+=("${COLLECTORS_DIR}/cdp-console.py")
+fi
+
+for collector in "${REQUIRED_COLLECTORS[@]}"; do
+    if [ ! -f "$collector" ]; then
+        generate_error_json \
+            "COLLECTOR_MISSING" \
+            "Required collector script not found: $collector" \
+            "Verify repository structure: ls -la ${COLLECTORS_DIR}/"
+        echo ""
+        exit 1
+    fi
+done
 
 if [ "$INCLUDE_CONSOLE" -eq 1 ] && [ -z "$CONSOLE_LOG" ]; then
     if [[ "$OUTPUT_FILE" == *.* ]]; then
@@ -211,7 +235,17 @@ validate_url() {
     local url=$1
     local start_time=$(python3 -c "import time; print(int(time.time() * 1000))")
 
-    echo "🔍 Validating URL: $url" >&2
+    # FR-004: Detect localhost URLs for lenient validation
+    local is_localhost=0
+    if [[ "$url" =~ ^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?(/.*)?$ ]]; then
+        is_localhost=1
+    fi
+
+    if [ $is_localhost -eq 1 ]; then
+        echo "🔍 Validating URL: $url (localhost - lenient validation)" >&2
+    else
+        echo "🔍 Validating URL: $url" >&2
+    fi
 
     # Execute curl and capture both status code and exit code
     local http_code
@@ -251,13 +285,52 @@ validate_url() {
     fi
 
     # Check HTTP status code (application-level errors)
+    # FR-004: Localhost URLs accept any HTTP status (200-599)
+    # FR-005, FR-011: Remote URLs require 200-399, hard stop on 404 and other errors (400-599)
     if [[ "$http_code" =~ ^[23][0-9][0-9]$ ]]; then
         echo "✅ URL validation passed (HTTP $http_code) in ${validation_time}ms" >&2
         return 0
+    elif [ $is_localhost -eq 1 ]; then
+        # Localhost: Accept any HTTP status code (lenient validation)
+        if [[ "$http_code" =~ ^[45][0-9][0-9]$ ]]; then
+            echo "✅ URL validation passed (HTTP $http_code - localhost lenient mode) in ${validation_time}ms" >&2
+            return 0
+        else
+            echo "❌ URL validation failed" >&2
+            echo "   HTTP Status: $http_code" >&2
+            echo "   Error: Unexpected HTTP response from localhost" >&2
+            echo "   Recovery: Verify dev server is running or use --skip-validation" >&2
+            return 1
+        fi
+    elif [[ "$http_code" =~ ^404$ ]]; then
+        # Remote URL: Hard stop on 404
+        echo "❌ URL validation failed - HARD STOP" >&2
+        echo "   HTTP Status: 404 Not Found" >&2
+        echo "   Error: The URL $url does not exist on the server" >&2
+        echo "   Recovery:" >&2
+        echo "     1. Verify the URL is correct (check spelling, path)" >&2
+        echo "     2. Verify the server is running and the resource exists" >&2
+        echo "     3. Use --skip-validation ONLY if you need to generate a new page ID" >&2
+        echo "" >&2
+        echo "   ⚠️  Chrome will NOT be launched. Fix the URL before proceeding." >&2
+        return 1
+    elif [[ "$http_code" =~ ^[45][0-9][0-9]$ ]]; then
+        # Remote URL: Hard stop on other 4xx/5xx errors
+        echo "❌ URL validation failed - HARD STOP" >&2
+        echo "   HTTP Status: $http_code" >&2
+        echo "   Error: URL returned client/server error" >&2
+        echo "   Recovery:" >&2
+        echo "     1. Verify the URL is correct and accessible" >&2
+        echo "     2. Check server logs or status" >&2
+        echo "     3. Use --skip-validation to bypass (not recommended)" >&2
+        echo "" >&2
+        echo "   ⚠️  Chrome will NOT be launched. Fix the URL before proceeding." >&2
+        return 1
     else
         echo "❌ URL validation failed" >&2
-        echo "   Error: URL returned HTTP $http_code" >&2
-        echo "   Recovery: Fix URL or use --skip-validation to bypass" >&2
+        echo "   HTTP Status: $http_code" >&2
+        echo "   Error: Unexpected HTTP response" >&2
+        echo "   Recovery: Verify URL or use --skip-validation" >&2
         return 1
     fi
 }
@@ -361,14 +434,14 @@ summarize_log() {
         args+=("--include-console" "--console" "$CONSOLE_LOG")
     fi
 
-    python3 "${SCRIPT_DIR}/cdp-summarize.py" "${args[@]}"
+    python3 "${COLLECTORS_DIR}/cdp-summarize.py" "${args[@]}"
 }
 
-NETWORK_SCRIPT="${SCRIPT_DIR}/cdp-network.py"
+NETWORK_SCRIPT="${COLLECTORS_DIR}/cdp-network.py"
 NETWORK_ARGS=("$PAGE_ID" "$URL" "--port=${RESOLVED_PORT}")
 
 if [ -n "$FILTER_VALUE" ]; then
-    NETWORK_SCRIPT="${SCRIPT_DIR}/cdp-network-with-body.py"
+    NETWORK_SCRIPT="${COLLECTORS_DIR}/cdp-network-with-body.py"
     NETWORK_ARGS=("$PAGE_ID" "$URL" "$FILTER" "--port=${RESOLVED_PORT}")
 fi
 
@@ -384,12 +457,53 @@ if [ "$INCLUDE_CONSOLE" -eq 1 ]; then
     fi
 
     set +e
-    timeout ${DURATION} python3 "${SCRIPT_DIR}/cdp-console.py" "${CONSOLE_ARGS[@]}" 2>&1 | tee "$CONSOLE_LOG" &
+    timeout ${DURATION} python3 "${COLLECTORS_DIR}/cdp-console.py" "${CONSOLE_ARGS[@]}" 2>&1 | tee "$CONSOLE_LOG" &
     CONSOLE_JOB=$!
     set -e
+
+    # FR-006: Verify console monitor PID
+    sleep 0.5  # Brief delay to allow process startup
+    if ! kill -0 $CONSOLE_JOB 2>/dev/null; then
+        # FR-007: Provide clear error message with command details
+        echo "" >&2
+        echo "❌ Console monitor failed to start" >&2
+        echo "   Command: python3 ${COLLECTORS_DIR}/cdp-console.py ${CONSOLE_ARGS[*]}" >&2
+        echo "   Check log: $CONSOLE_LOG" >&2
+        echo "" >&2
+        echo "💡 Recovery:" >&2
+        echo "   - Verify Python websockets installed: pip3 install websockets --break-system-packages" >&2
+        echo "   - Check CDP port accessibility: curl -s http://localhost:${RESOLVED_PORT}/json" >&2
+        exit 1
+    fi
+    echo "✅ Console monitor started (PID: $CONSOLE_JOB)"
 fi
 
-timeout ${DURATION} python3 "$NETWORK_SCRIPT" "${NETWORK_ARGS[@]}" 2>&1 | tee "$OUTPUT_FILE" || true
+timeout ${DURATION} python3 "$NETWORK_SCRIPT" "${NETWORK_ARGS[@]}" 2>&1 | tee "$OUTPUT_FILE" &
+NETWORK_JOB=$!
+
+# FR-006: Verify network monitor PID
+sleep 0.5  # Brief delay to allow process startup
+if ! kill -0 $NETWORK_JOB 2>/dev/null; then
+    # FR-007: Provide clear error message with command details
+    echo "" >&2
+    echo "❌ Network monitor failed to start" >&2
+    echo "   Command: python3 $NETWORK_SCRIPT ${NETWORK_ARGS[*]}" >&2
+    echo "   Check log: $OUTPUT_FILE" >&2
+    echo "" >&2
+    echo "💡 Recovery:" >&2
+    echo "   - Verify Python websockets installed: pip3 install websockets --break-system-packages" >&2
+    echo "   - Check CDP port accessibility: curl -s http://localhost:${RESOLVED_PORT}/json" >&2
+
+    # Kill console monitor if it was started
+    if [ "$INCLUDE_CONSOLE" -eq 1 ]; then
+        kill $CONSOLE_JOB 2>/dev/null || true
+    fi
+    exit 1
+fi
+echo "✅ Network monitor started (PID: $NETWORK_JOB)"
+
+# Wait for network monitor to complete
+wait $NETWORK_JOB || true
 
 if [ "$INCLUDE_CONSOLE" -eq 1 ]; then
     wait $CONSOLE_JOB || true
