@@ -83,17 +83,8 @@ Claude will automatically use this skill when appropriate.
 ├── cdp-network.py               # Network monitor
 ├── cdp-network-with-body.py     # Network monitor with selective response bodies
 ├── cdp-dom-monitor.py           # DOM/form-field change monitor
-├── summarize.py                 # Shared post-run summariser
-├── docs/
-│   └── headed-mode/
-│       ├── CHROME-136-CDP-INCIDENT.md     # Chrome 136 security change + investigation
-│       ├── INTERACTIVE_WORKFLOW_DESIGN.md # Headed workflow design notes
-│       └── LAUNCHER_CONTRACT.md           # chrome-launcher.sh API contract
-├── scripts/
-│   └── diagnostics/
-│       └── debug-cdp-connection.py        # Verbose CDP troubleshooting helper
-└── tests/
-    └── smoke-test-headed.sh               # CI/local smoke test for headed Chrome CDP
+├── cdp-summarize.py             # Shared post-run summariser
+└── install.sh                   # Installer script
 ```
 
 ## Manual testing
@@ -148,7 +139,7 @@ Notes:
 - **DOM snapshots & live form monitoring** via `cdp-dom-monitor.py`.
 - **Console + network capture** with idle detection and optional response bodies.
 - **Smart orchestration**: `debug-orchestrator.sh` launches Chrome, hands off to collectors, aggregates results, and emits recovery hints when launch fails.
-- **Diagnostics & smoke tests** to catch regressions after Chrome updates (`scripts/diagnostics/debug-cdp-connection.py`, `tests/smoke-test-headed.sh`).
+- **Chrome 136+ compatible**: Automatically handles `--user-data-dir` requirement for headed mode.
 
 ## Files
 
@@ -156,11 +147,8 @@ Notes:
 - `debug-orchestrator.sh` – wraps the launcher, starts collectors, summarises output.
 - `cdp-console.py`, `cdp-network.py`, `cdp-network-with-body.py` – CDP collectors (shared with orchestrator).
 - `cdp-dom-monitor.py` – live DOM/form-field watcher.
-- `summarize.py` – shared summary formatter.
-- `scripts/diagnostics/debug-cdp-connection.py` – verbose troubleshooting helper.
-- `tests/smoke-test-headed.sh` – regression test for Chrome 136+ headed sessions.
-- `docs/headed-mode/*` – design notes, launcher contract, and the Chrome 136 incident report.
-- `SKILL.md` – agent-facing skill guide (kept in sync with the changes above).
+- `cdp-summarize.py` – shared summary formatter.
+- `SKILL.md` – agent-facing skill guide with comprehensive workflow documentation.
 - `README.md`, `install.sh` – maintainer info and installer.
 
 ## Troubleshooting
@@ -181,24 +169,56 @@ sudo apt-get install jq  # Linux
 pkill -f "chrome.*9222"
 ```
 
+## Spec-Kit Integration
+
+This project uses [GitHub Spec-Kit](https://github.com/github/spec-kit) for spec-driven development. Spec-Kit provides structured workflows for creating specifications, plans, and tasks before implementation.
+
+### Available Spec-Kit Commands
+
+Use these slash commands in Claude Code:
+
+**Core Workflow:**
+- `/speckit.constitution` - Establish project principles and development guidelines
+- `/speckit.specify` - Create functional specifications
+- `/speckit.plan` - Create technical architecture aligned with your stack
+- `/speckit.tasks` - Generate actionable task breakdowns
+- `/speckit.implement` - Execute implementation systematically
+
+**Optional Enhancements:**
+- `/speckit.clarify` - Resolve ambiguous requirements before planning
+- `/speckit.analyze` - Validate cross-artifact consistency
+- `/speckit.checklist` - Generate quality validation checklists
+
+### Spec-Kit Files
+
+- `.claude/commands/speckit.*.md` - Slash command definitions
+- `.specify/templates/` - Document templates for specs, plans, and tasks
+- `.specify/scripts/bash/` - Helper scripts for spec-driven workflows
+- `.specify/memory/` - Generated specifications and project artifacts (gitignored)
+
 ## Uninstall
 
 ```bash
 rm -rf ~/.claude/skills/browser-debugger
 ```
 
-## Documentation & Testing
+## Testing
 
-- `SKILL.md` – primary entry point for agents (now covers headed mode and Chrome 136 requirements).
-- `docs/headed-mode/CHROME-136-CDP-INCIDENT.md` – deep dive into the headed-mode incident and resolution.
-- `docs/headed-mode/INTERACTIVE_WORKFLOW_DESIGN.md` – design for interactive workflows.
-- `docs/headed-mode/LAUNCHER_CONTRACT.md` – chrome-launcher.sh CLI/JSON contract.
-- `tests/smoke-test-headed.sh` – quick validation that headed mode still works after Chrome updates.
-
-Run the smoke test locally after updating Chrome:
+Test the skill manually after updating Chrome:
 
 ```bash
-./tests/smoke-test-headed.sh
+# Test headed Chrome launch
+./debug-orchestrator.sh "https://example.com" --mode=headed --include-console
+
+# Verify Chrome responds to CDP commands
+WS_URL=$(curl -s http://localhost:9222/json | jq -r '.[0].webSocketDebuggerUrl')
+echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"2+2","returnByValue":true}}' \
+  | websocat -n1 "$WS_URL" | jq
+
+# Expected: {"id":1,"result":{"result":{"type":"number","value":4}}}
+
+# Cleanup
+pkill -f "chrome.*9222"
 ```
 
-It verifies Chrome version detection, `--user-data-dir` behaviour, a simple `Runtime.evaluate`, and DOM access, then tears everything down.
+This verifies Chrome version detection, `--user-data-dir` behaviour, Runtime.evaluate functionality, and DOM access.

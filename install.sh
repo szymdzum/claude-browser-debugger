@@ -89,9 +89,11 @@ else
     echo "📄 Copying files..."
     mkdir -p "$TARGET_DIR"
 
-    # Copy all necessary files
+    # Copy all necessary runtime files
     for file in SKILL.md README.md install.sh \
-                cdp-console.py cdp-network.py cdp-network-with-body.py debug-orchestrator.sh summarize.py; do
+                chrome-launcher.sh debug-orchestrator.sh \
+                cdp-console.py cdp-network.py cdp-network-with-body.py cdp-dom-monitor.py \
+                cdp-summarize.py; do
         if [ -f "$SCRIPT_DIR/$file" ]; then
             cp "$SCRIPT_DIR/$file" "$TARGET_DIR/"
             # Make scripts executable

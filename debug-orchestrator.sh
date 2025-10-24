@@ -207,7 +207,7 @@ summarize_log() {
         args+=("--include-console" "--console" "$CONSOLE_LOG")
     fi
 
-    python3 "${SCRIPT_DIR}/summarize.py" "${args[@]}"
+    python3 "${SCRIPT_DIR}/cdp-summarize.py" "${args[@]}"
 }
 
 NETWORK_SCRIPT="${SCRIPT_DIR}/cdp-network.py"

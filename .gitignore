@@ -23,3 +23,15 @@ __pycache__/
 # Test outputs
 /tmp/
 *.tmp
+
+# Spec-kit (development-only infrastructure)
+.claude/
+.specify/
+
+# Development documentation (not needed by end users)
+/specs/
+/CLAUDE.md
+/SPEC-KIT-SETUP.md
+/docs/skills.md
+/docs/skills-best-practices.md
+/docs/websocat-analisys.md
