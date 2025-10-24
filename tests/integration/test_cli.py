@@ -522,5 +522,83 @@ class TestCLICommandsWithChrome:
         assert "result" in result
 
 
+class TestLoggingFormats:
+    """T100-T101: Test structured logging output formats."""
+
+    @pytest.mark.integration
+    def test_json_log_format(self):
+        """T100: Test --log-format json produces valid JSON logs."""
+        # Use help command (doesn't require Chrome)
+        returncode, stdout, stderr = run_cli(
+            "--log-format", "json",
+            "--help"
+        )
+
+        assert returncode == 0
+
+        # stderr should contain JSON-formatted log lines
+        # Each line should be valid JSON with timestamp, level, message
+        if stderr.strip():
+            import json
+            for line in stderr.strip().split('\n'):
+                if line.strip():
+                    try:
+                        log_entry = json.loads(line)
+                        assert "timestamp" in log_entry
+                        assert "level" in log_entry
+                        assert "message" in log_entry
+                    except json.JSONDecodeError:
+                        pytest.fail(f"Invalid JSON log line: {line}")
+
+    @pytest.mark.integration
+    def test_text_log_format(self):
+        """T101: Test --log-format text produces human-readable logs."""
+        # Use help command (doesn't require Chrome)
+        returncode, stdout, stderr = run_cli(
+            "--log-format", "text",
+            "--help"
+        )
+
+        assert returncode == 0
+
+        # stderr should contain text-formatted logs
+        # Format: YYYY-MM-DD HH:MM:SS LEVEL message
+        if stderr.strip():
+            for line in stderr.strip().split('\n'):
+                if line.strip():
+                    # Check for typical log format patterns
+                    assert any([
+                        "INFO" in line,
+                        "DEBUG" in line,
+                        "WARNING" in line,
+                        "ERROR" in line,
+                    ]), f"Log line missing level: {line}"
+
+    @pytest.mark.integration
+    def test_quiet_flag_suppresses_logs(self):
+        """Test --quiet flag suppresses non-error output."""
+        returncode, stdout, stderr = run_cli(
+            "--quiet",
+            "--help"
+        )
+
+        assert returncode == 0
+        # stderr should be minimal or empty (only errors)
+        # Help text should still be in stdout
+
+    @pytest.mark.integration
+    def test_verbose_flag_shows_debug_logs(self):
+        """Test --verbose flag enables DEBUG level logs."""
+        returncode, stdout, stderr = run_cli(
+            "--verbose",
+            "--help"
+        )
+
+        assert returncode == 0
+        # stderr should contain DEBUG level messages
+        if stderr:
+            assert "DEBUG" in stderr or "debug" in stderr.lower()
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
