@@ -225,3 +225,163 @@ async def test_large_dom_extraction(chrome_session):
         dom = result["result"]["value"]
         assert len(dom) > 10000
         assert "<div>" in dom
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_chrome_crash_recovery_with_reconnect(chrome_session):
+    """T084: Test Chrome crash recovery via reconnect_with_backoff.
+
+    Simulates Chrome crash by killing the process, then verifies
+    reconnect_with_backoff can successfully reconnect when Chrome restarts.
+    """
+    ws_url = chrome_session["ws_url"]
+    chrome_pid = chrome_session["pid"]
+
+    conn = CDPConnection(ws_url, timeout=5.0)
+    await conn.connect()
+
+    # Verify connection works
+    result = await conn.execute_command(
+        "Runtime.evaluate",
+        {"expression": "1 + 1", "returnByValue": True}
+    )
+    assert result["result"]["value"] == 2
+
+    # Simulate Chrome crash (kill Chrome)
+    subprocess.run(["kill", "-9", str(chrome_pid)])
+    await asyncio.sleep(0.5)
+
+    # Connection should fail now
+    assert not conn.is_connected
+
+    # Relaunch Chrome on same port
+    launcher_path = Path(__file__).parent.parent.parent / "scripts" / "core" / "chrome-launcher.sh"
+    try:
+        output = subprocess.check_output(
+            [str(launcher_path), "--mode=headless", "--port=9222", "--url=about:blank"],
+            stderr=subprocess.PIPE,
+            timeout=10
+        )
+        new_session = json.loads(output)
+    except Exception as e:
+        pytest.skip(f"Failed to relaunch Chrome: {e}")
+
+    # Update connection URL to new session
+    conn.ws_url = new_session["ws_url"]
+
+    # Reconnect with backoff (should succeed immediately since Chrome is running)
+    try:
+        await conn.reconnect_with_backoff(max_attempts=3)
+        assert conn.is_connected
+
+        # Verify reconnected session works
+        result = await conn.execute_command(
+            "Runtime.evaluate",
+            {"expression": "2 + 2", "returnByValue": True}
+        )
+        assert result["result"]["value"] == 4
+    finally:
+        await conn.disconnect()
+        # Cleanup new Chrome instance
+        subprocess.run(["kill", str(new_session["pid"])])
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_domain_replay_after_reconnect(chrome_session):
+    """T085: Test domain replay after reconnection.
+
+    Enables multiple CDP domains, disconnects, reconnects, and verifies
+    all domains are automatically re-enabled via _replay_domains.
+    """
+    ws_url = chrome_session["ws_url"]
+
+    conn = CDPConnection(ws_url)
+    await conn.connect()
+
+    # Enable multiple domains
+    await conn.execute_command("Console.enable")
+    await conn.execute_command("Network.enable")
+    await conn.execute_command("Page.enable")
+
+    # Verify domains tracked
+    assert "Console" in conn._enabled_domains
+    assert "Network" in conn._enabled_domains
+    assert "Page" in conn._enabled_domains
+
+    # Disconnect and reconnect
+    await conn.disconnect()
+    await conn.reconnect_with_backoff(max_attempts=3)
+
+    # Verify domains were replayed (events should work)
+    received_events = []
+
+    async def on_console_message(params: dict):
+        received_events.append(params)
+
+    conn.subscribe("Console.messageAdded", on_console_message)
+
+    # Trigger console event (should work because Console domain was replayed)
+    await conn.execute_command(
+        "Runtime.evaluate",
+        {"expression": "console.log('Replay test')"}
+    )
+
+    await asyncio.sleep(0.5)
+
+    # Event should be received (proving domain was re-enabled)
+    assert len(received_events) > 0
+    assert "Replay test" in received_events[0]["message"]["text"]
+
+    await conn.disconnect()
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_event_handler_exception_isolation(chrome_session):
+    """T086: Test event handler exception isolation.
+
+    Verifies that exceptions in event handlers don't crash the connection
+    or prevent other handlers from running.
+    """
+    ws_url = chrome_session["ws_url"]
+
+    received_by_good_handler = []
+    error_handler_called = False
+
+    async def failing_handler(params: dict):
+        """Handler that always throws exception."""
+        nonlocal error_handler_called
+        error_handler_called = True
+        raise RuntimeError("Intentional test error")
+
+    async def good_handler(params: dict):
+        """Handler that works correctly."""
+        received_by_good_handler.append(params)
+
+    async with CDPConnection(ws_url) as conn:
+        await conn.execute_command("Console.enable")
+
+        # Subscribe both handlers to same event
+        conn.subscribe("Console.messageAdded", failing_handler)
+        conn.subscribe("Console.messageAdded", good_handler)
+
+        # Trigger console event
+        await conn.execute_command(
+            "Runtime.evaluate",
+            {"expression": "console.log('Exception isolation test')"}
+        )
+
+        await asyncio.sleep(0.5)
+
+        # Verify both handlers were called
+        assert error_handler_called, "Failing handler should have been called"
+        assert len(received_by_good_handler) > 0, "Good handler should have received event"
+
+        # Verify connection still works after handler exception
+        result = await conn.execute_command(
+            "Runtime.evaluate",
+            {"expression": "1 + 1", "returnByValue": True}
+        )
+        assert result["result"]["value"] == 2

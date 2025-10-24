@@ -149,6 +149,78 @@ class CDPConnection:
 
         logger.info("CDP connection closed")
 
+    async def reconnect_with_backoff(
+        self,
+        max_attempts: int = 5,
+        initial_delay: float = 1.0,
+        max_delay: float = 30.0
+    ) -> None:
+        """Reconnect with exponential backoff strategy.
+
+        Implements exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (max).
+        After reconnection, replays all domain.enable commands.
+
+        Args:
+            max_attempts: Maximum reconnection attempts (default: 5)
+            initial_delay: Initial backoff delay in seconds (default: 1.0)
+            max_delay: Maximum backoff delay in seconds (default: 30.0)
+
+        Raises:
+            ConnectionFailedError: If all reconnection attempts fail
+
+        Example:
+            >>> conn = CDPConnection("ws://localhost:9222/devtools/page/...")
+            >>> await conn.connect()
+            >>> # Connection lost...
+            >>> await conn.reconnect_with_backoff(max_attempts=7)
+        """
+        delay = initial_delay
+
+        for attempt in range(1, max_attempts + 1):
+            logger.info(f"Reconnection attempt {attempt}/{max_attempts} (backoff: {delay}s)")
+
+            try:
+                await self.connect()
+                logger.info("Reconnection successful")
+
+                # Replay enabled domains after successful reconnection
+                await self._replay_domains()
+                return
+
+            except Exception as e:
+                logger.warning(f"Reconnection attempt {attempt} failed: {e}")
+
+                if attempt < max_attempts:
+                    await asyncio.sleep(delay)
+                    # Exponential backoff with cap
+                    delay = min(delay * 2, max_delay)
+                else:
+                    raise ConnectionFailedError(
+                        f"Failed to reconnect after {max_attempts} attempts"
+                    )
+
+    async def _replay_domains(self) -> None:
+        """Re-enable all previously enabled CDP domains.
+
+        Called after successful reconnection to restore domain state.
+        Silently skips domains that fail to re-enable (best-effort).
+
+        Internal method used by reconnect_with_backoff.
+        """
+        if not self._enabled_domains:
+            logger.debug("No domains to replay")
+            return
+
+        logger.info(f"Replaying {len(self._enabled_domains)} enabled domains")
+
+        for domain in self._enabled_domains:
+            try:
+                await self.execute_command(f"{domain}.enable", {})
+                logger.debug(f"Replayed domain: {domain}")
+            except Exception as e:
+                # Best-effort: log but continue with other domains
+                logger.warning(f"Failed to replay domain {domain}: {e}")
+
     async def __aenter__(self) -> "CDPConnection":
         """Context manager entry: connect automatically."""
         await self.connect()
