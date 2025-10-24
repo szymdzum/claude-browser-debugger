@@ -12,3 +12,6 @@ mypy>=1.5.0
 
 # Test coverage
 pytest-cov>=4.1.0
+
+# Memory profiling for integration tests
+psutil>=5.9.0
