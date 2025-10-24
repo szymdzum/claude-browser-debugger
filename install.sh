@@ -125,11 +125,32 @@ else
         fi
     done
 
-    # Copy utility scripts
-    for file in cdp-query.sh cleanup-chrome.sh save-session.sh resume-session.sh; do
+    # Copy utility scripts (shell scripts)
+    for file in cdp-query.sh cleanup-chrome.sh save-session.sh resume-session.sh extract-state.sh; do
         if [ -f "$SCRIPT_DIR/scripts/utilities/$file" ]; then
             cp "$SCRIPT_DIR/scripts/utilities/$file" "$TARGET_DIR/scripts/utilities/"
             chmod +x "$TARGET_DIR/scripts/utilities/$file"
+            echo "  ✓ scripts/utilities/$file"
+        else
+            echo "  ⚠️  scripts/utilities/$file not found (skipping)"
+        fi
+    done
+
+    # Copy utility scripts (Python)
+    for file in parse-redux-logs.py; do
+        if [ -f "$SCRIPT_DIR/scripts/utilities/$file" ]; then
+            cp "$SCRIPT_DIR/scripts/utilities/$file" "$TARGET_DIR/scripts/utilities/"
+            chmod +x "$TARGET_DIR/scripts/utilities/$file"
+            echo "  ✓ scripts/utilities/$file"
+        else
+            echo "  ⚠️  scripts/utilities/$file not found (skipping)"
+        fi
+    done
+
+    # Copy utility scripts (JavaScript)
+    for file in inject-redux.js; do
+        if [ -f "$SCRIPT_DIR/scripts/utilities/$file" ]; then
+            cp "$SCRIPT_DIR/scripts/utilities/$file" "$TARGET_DIR/scripts/utilities/"
             echo "  ✓ scripts/utilities/$file"
         else
             echo "  ⚠️  scripts/utilities/$file not found (skipping)"

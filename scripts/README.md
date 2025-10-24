@@ -191,6 +191,9 @@ Helper scripts for session management, cleanup, and ad-hoc CDP queries.
 | **cleanup-chrome.sh** | Kill Chrome processes on debugging port | `./scripts/utilities/cleanup-chrome.sh [--port=9222]` |
 | **save-session.sh** | Save Chrome debugging session for later resume | `./scripts/utilities/save-session.sh <session-name> [--port=9222]` |
 | **resume-session.sh** | Resume saved debugging session | `./scripts/utilities/resume-session.sh <session-name>` |
+| **extract-state.sh** | Extract application state from Redux store | `./scripts/utilities/extract-state.sh <url> <output-dir> [--timeout=60]` |
+| **inject-redux.js** | Inject Redux store exposure script into page | `cat scripts/utilities/inject-redux.js \| websocat -n1 "$WS_URL"` |
+| **parse-redux-logs.py** | Parse Redux state timeline from console logs | `python3 scripts/utilities/parse-redux-logs.py <log-file> [-o output.json]` |
 
 ### cdp-query.sh
 
@@ -277,6 +280,60 @@ Restore a previously saved debugging session by reconnecting to the WebSocket.
 ```
 
 **Note:** Sessions expire when Chrome process terminates or computer restarts
+
+### extract-state.sh
+
+Extract application state from Redux stores in React applications.
+
+**Key Features:**
+- Launches Chrome in headed mode for state extraction
+- Injects Redux store detection script
+- Extracts state to JSON file
+- Handles timeout for long-running captures
+
+**Example:**
+```bash
+./scripts/utilities/extract-state.sh "http://localhost:3000/app" /tmp/state-output --timeout=60
+```
+
+**Use When:** Debugging React/Redux applications, capturing application state snapshots
+
+### inject-redux.js
+
+JavaScript injection script that searches for and exposes Redux stores at `window.__EXPOSED_REDUX_STORE__`.
+
+**Key Features:**
+- Searches common global locations (window.store, window.__REDUX_STORE__)
+- Walks React Fiber tree to find Provider stores
+- Graceful fallback with helpful error messages
+- Available in both readable and minified formats
+
+**Example:**
+```bash
+WS_URL=$(curl -s http://localhost:9222/json | jq -r '.[0].webSocketDebuggerUrl')
+cat scripts/utilities/inject-redux.js | websocat -n1 "$WS_URL"
+```
+
+**Use When:** Accessing Redux state in React applications, debugging state management
+
+### parse-redux-logs.py
+
+Parse console logs to extract Redux state timeline from redux-logger output.
+
+**Key Features:**
+- Extracts action types, timestamps, prev/next state
+- Generates JSON timeline with metadata
+- Safe JSON parsing with error recovery
+- Warns about malformed log entries
+
+**Example:**
+```bash
+python3 scripts/utilities/parse-redux-logs.py /tmp/console.log -o /tmp/timeline.json
+```
+
+**Output:** JSON file with timeline array and metadata (total events, warnings)
+
+**Use When:** Analyzing Redux action flow, debugging state changes over time
 
 ---
 
