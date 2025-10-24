@@ -311,6 +311,6 @@ pkill -f cdp-network
 
 ## Related Documentation
 
-- [Workflow Guide](./WORKFLOW_GUIDE.md) - Complete headed mode workflow
+- [Workflow Guide](./workflow-guide.md) - Complete headed mode workflow
 - [Network Monitor](../../cdp-network-with-body.py) - Filter implementation
 - [Stage Test Results](../002-stage-test-result.md) - Original findings

@@ -45,13 +45,13 @@ When documentation needs updates (new workflows, troubleshooting tips, CDP comma
 
 **Why this priority**: Supports long-term maintenance. Lower priority than P1 because it's about maintainability rather than immediate functionality, but still critical for sustainable development.
 
-**Independent Test**: Can be tested by adding new content to docs/workflows.md and verifying SKILL.md references work correctly without modification.
+**Independent Test**: Can be tested by adding new content to docs/guides/workflows.md and verifying SKILL.md references work correctly without modification.
 
 **Acceptance Scenarios**:
 
-1. **Given** maintainer wants to add new troubleshooting entry, **When** they edit docs/troubleshooting.md, **Then** change is available to agents via existing SKILL.md reference
-2. **Given** maintainer updates Chrome 136 requirements, **When** they edit docs/chrome-136-requirements.md, **Then** SKILL.md links continue to work without updates
-3. **Given** maintainer adds new workflow pattern, **When** they edit docs/workflows.md, **Then** pattern is discoverable via SKILL.md workflow section
+1. **Given** maintainer wants to add new troubleshooting entry, **When** they edit docs/guides/troubleshooting.md, **Then** change is available to agents via existing SKILL.md reference
+2. **Given** maintainer updates Chrome 136 requirements, **When** they edit docs/reference/chrome-136-requirements.md, **Then** SKILL.md links continue to work without updates
+3. **Given** maintainer adds new workflow pattern, **When** they edit docs/guides/workflows.md, **Then** pattern is discoverable via SKILL.md workflow section
 
 ---
 

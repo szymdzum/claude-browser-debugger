@@ -285,19 +285,19 @@ CHROME_ARGS=(
 - CI/CD validation
 - Debugging setup issues
 
-### Documentation (Now in `docs/headed-mode/`)
+### Documentation (Now in `docs/guides/`)
 
-1. **`CHROME-136-CDP-INCIDENT.md`** (this file)
+1. **`chrome-136-incident.md`** (this file)
    - Comprehensive incident report
    - Investigation timeline
    - Test results
    - Solution details
 
-2. **`INTERACTIVE_WORKFLOW_DESIGN.md`**
+2. **`interactive-workflow-design.md`**
    - Headed mode workflow design
    - User interaction patterns
 
-3. **`LAUNCHER_CONTRACT.md`**
+3. **`launcher-contract.md`**
    - chrome-launcher.sh API specification
    - JSON output format
    - Error codes
@@ -415,8 +415,8 @@ python3 check-form-state.py <page_id> 9222
 
 ### Internal Documentation
 
-- **Design:** `docs/headed-mode/INTERACTIVE_WORKFLOW_DESIGN.md`
-- **API Spec:** `docs/headed-mode/LAUNCHER_CONTRACT.md`
+- **Design:** `docs/guides/interactive-workflow-design.md`
+- **API Spec:** `docs/guides/launcher-contract.md`
 - **User Guide:** `SKILL.md`
 
 ### Related Scripts

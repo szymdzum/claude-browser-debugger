@@ -29,9 +29,8 @@ __pycache__/
 .specify/
 
 # Development documentation (not needed by end users)
-/specs/
+specs/
 /CLAUDE.md
-/SPEC-KIT-SETUP.md
-/docs/skills.md
-/docs/skills-best-practices.md
-/docs/websocat-analisys.md
+
+# Auxiliary files (test results, drafts, runtime artifacts)
+/aux/
