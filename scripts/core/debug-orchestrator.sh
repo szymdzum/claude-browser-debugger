@@ -45,6 +45,109 @@ generate_success_json() {
     echo "$data" | jq '. + {status: "success"}' 2>/dev/null
 }
 
+# FR-008: Cleanup function for graceful session termination (T020)
+cleanup_function() {
+    local exit_code=${1:-0}
+
+    echo ""
+    echo "🧹 Cleaning up session..."
+
+    # Stop monitors gracefully (SIGTERM)
+    if [ -n "$NETWORK_JOB" ] && kill -0 "$NETWORK_JOB" 2>/dev/null; then
+        echo "   Stopping network monitor (PID: $NETWORK_JOB)..."
+        kill -TERM "$NETWORK_JOB" 2>/dev/null || true
+        wait "$NETWORK_JOB" 2>/dev/null || true
+    fi
+
+    if [ "$INCLUDE_CONSOLE" -eq 1 ] && [ -n "$CONSOLE_JOB" ] && kill -0 "$CONSOLE_JOB" 2>/dev/null; then
+        echo "   Stopping console monitor (PID: $CONSOLE_JOB)..."
+        kill -TERM "$CONSOLE_JOB" 2>/dev/null || true
+        wait "$CONSOLE_JOB" 2>/dev/null || true
+    fi
+
+    # Extract final DOM snapshot if Chrome is still running
+    if [ -n "$CHROME_PID" ] && kill -0 "$CHROME_PID" 2>/dev/null; then
+        echo "   Extracting final DOM state..."
+
+        # Determine DOM output file path
+        if [[ "$OUTPUT_FILE" == *.* ]]; then
+            base="${OUTPUT_FILE%.*}"
+            base="${base%-network}"  # Remove -network suffix
+            DOM_FILE="${base}-dom.html"
+        else
+            DOM_FILE="${OUTPUT_FILE%-network.log}-dom.html"
+        fi
+
+        # Extract DOM via CDP
+        if [ -n "$WS_URL" ]; then
+            echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"document.documentElement.outerHTML","returnByValue":true}}' \
+                | websocat -n1 -B 1048576 "$WS_URL" 2>/dev/null \
+                | jq -r '.result.result.value' > "$DOM_FILE" 2>/dev/null || true
+
+            if [ -f "$DOM_FILE" ] && [ -s "$DOM_FILE" ]; then
+                echo "   ✅ DOM saved to: $DOM_FILE"
+            fi
+        fi
+    fi
+
+    # Generate summary report
+    if [ -f "$OUTPUT_FILE" ]; then
+        echo "   Generating summary report..."
+
+        # Determine summary file path
+        if [[ "$OUTPUT_FILE" == *.* ]]; then
+            base="${OUTPUT_FILE%.*}"
+            base="${base%-network}"
+            SUMMARY_FILE="${base}-summary.txt"
+        else
+            SUMMARY_FILE="${OUTPUT_FILE%-network.log}-summary.txt"
+        fi
+
+        # Generate summary using cdp-summarize.py
+        python3 "${COLLECTORS_DIR}/cdp-summarize.py" \
+            --network "$OUTPUT_FILE" \
+            --duration "$DURATION" \
+            --format text > "$SUMMARY_FILE" 2>/dev/null || true
+
+        if [ -f "$SUMMARY_FILE" ] && [ -s "$SUMMARY_FILE" ]; then
+            echo "   ✅ Summary saved to: $SUMMARY_FILE"
+        fi
+    fi
+
+    # Terminate Chrome
+    if [ -n "$CHROME_PID" ] && kill -0 "$CHROME_PID" 2>/dev/null; then
+        echo "   Stopping Chrome (PID: $CHROME_PID)..."
+        kill "$CHROME_PID" 2>/dev/null || true
+    fi
+
+    # FR-010: Display all output file locations
+    echo ""
+    echo "📁 Session artifacts preserved:"
+    if [ -f "$OUTPUT_FILE" ]; then
+        echo "   Network log: $OUTPUT_FILE"
+    fi
+    if [ "$INCLUDE_CONSOLE" -eq 1 ] && [ -f "$CONSOLE_LOG" ]; then
+        echo "   Console log: $CONSOLE_LOG"
+    fi
+    if [ -n "$DOM_FILE" ] && [ -f "$DOM_FILE" ]; then
+        echo "   Final DOM: $DOM_FILE"
+    fi
+    if [ -n "$SUMMARY_FILE" ] && [ -f "$SUMMARY_FILE" ]; then
+        echo "   Summary: $SUMMARY_FILE"
+    fi
+
+    if [ "$MODE" = "headed" ] && [ -n "$RESOLVED_PROFILE" ]; then
+        echo ""
+        echo "   💡 Note: Persistent profile kept at: $RESOLVED_PROFILE"
+        echo "   To clean: rm -rf $RESOLVED_PROFILE"
+    fi
+
+    echo ""
+    echo "✅ Session cleanup complete!"
+
+    exit "$exit_code"
+}
+
 # Display ready notification for headed mode (T007-T012: US1)
 display_ready_notification() {
     local url="$1"
@@ -163,6 +266,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 COLLECTORS_DIR="${REPO_ROOT}/scripts/collectors"
 
+# FR-009: Generate unique session ID (timestamp + PID) for file naming
+SESSION_ID=$(date +%Y%m%d-%H%M%S)-$$
+
+# FR-008: Set up SIGINT trap for graceful cleanup (T019)
+trap 'cleanup_function 130' SIGINT
+
 # Verify collector scripts exist before proceeding (FR-002)
 REQUIRED_COLLECTORS=(
     "${COLLECTORS_DIR}/cdp-network.py"
@@ -185,17 +294,24 @@ for collector in "${REQUIRED_COLLECTORS[@]}"; do
     fi
 done
 
+# FR-009: Inject SESSION_ID into output file paths for uniqueness
+if [[ "$OUTPUT_FILE" == *.* ]]; then
+    base="${OUTPUT_FILE%.*}"
+    ext="${OUTPUT_FILE##*.}"
+    OUTPUT_FILE="${base}-${SESSION_ID}-network.${ext}"
+else
+    OUTPUT_FILE="${OUTPUT_FILE}-${SESSION_ID}-network.log"
+fi
+
 if [ "$INCLUDE_CONSOLE" -eq 1 ] && [ -z "$CONSOLE_LOG" ]; then
     if [[ "$OUTPUT_FILE" == *.* ]]; then
         base="${OUTPUT_FILE%.*}"
+        # Remove -network suffix if present and replace with -console
+        base="${base%-network}"
         ext="${OUTPUT_FILE##*.}"
-        if [ "$base" = "$OUTPUT_FILE" ]; then
-            CONSOLE_LOG="${OUTPUT_FILE}-console.log"
-        else
-            CONSOLE_LOG="${base}-console.${ext}"
-        fi
+        CONSOLE_LOG="${base}-console.${ext}"
     else
-        CONSOLE_LOG="${OUTPUT_FILE}-console.log"
+        CONSOLE_LOG="${OUTPUT_FILE%-network.log}-console.log"
     fi
 fi
 
@@ -526,13 +642,5 @@ fi
 echo "💾 Full output saved to: $OUTPUT_FILE"
 echo ""
 
-# Step 4: Cleanup
-echo "🧹 Cleaning up..."
-kill $CHROME_PID 2>/dev/null || true
-
-if [ "$MODE" = "headed" ]; then
-    echo "   💡 Note: Persistent profile kept at: $RESOLVED_PROFILE"
-    echo "   To clean: rm -rf $RESOLVED_PROFILE"
-fi
-
-echo "✅ Done!"
+# Step 4: Cleanup - Use centralized cleanup function
+cleanup_function 0
