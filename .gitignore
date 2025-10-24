@@ -9,6 +9,21 @@ __pycache__/
 .Python
 .mypy_cache/
 .ruff_cache/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.venv/
+venv/
+ENV/
+env/
 
 # Logs
 *.log
