@@ -157,11 +157,39 @@ else
         fi
     done
 
-    # Copy documentation files
-    for file in chrome-136-requirements.md workflows.md cdp-commands.md troubleshooting.md; do
-        if [ -f "$SCRIPT_DIR/docs/$file" ]; then
-            cp "$SCRIPT_DIR/docs/$file" "$TARGET_DIR/docs/"
-            echo "  ✓ docs/$file"
+    # Copy documentation structure
+    echo "  📚 Copying documentation..."
+
+    # Copy docs/index.md (navigation guide)
+    if [ -f "$SCRIPT_DIR/docs/index.md" ]; then
+        cp "$SCRIPT_DIR/docs/index.md" "$TARGET_DIR/docs/"
+        echo "    ✓ docs/index.md"
+    fi
+
+    # Copy guides
+    mkdir -p "$TARGET_DIR/docs/guides"
+    for file in workflows.md troubleshooting.md chrome-136-incident.md interactive-workflow-design.md launcher-contract.md filter-flag-guide.md workflow-guide.md; do
+        if [ -f "$SCRIPT_DIR/docs/guides/$file" ]; then
+            cp "$SCRIPT_DIR/docs/guides/$file" "$TARGET_DIR/docs/guides/"
+            echo "    ✓ docs/guides/$file"
+        fi
+    done
+
+    # Copy reference docs
+    mkdir -p "$TARGET_DIR/docs/reference"
+    for file in cdp-commands.md chrome-dom.md websocat-analysis.md; do
+        if [ -f "$SCRIPT_DIR/docs/reference/$file" ]; then
+            cp "$SCRIPT_DIR/docs/reference/$file" "$TARGET_DIR/docs/reference/"
+            echo "    ✓ docs/reference/$file"
+        fi
+    done
+
+    # Copy development docs
+    mkdir -p "$TARGET_DIR/docs/development"
+    for file in skills.md skills-best-practices.md; do
+        if [ -f "$SCRIPT_DIR/docs/development/$file" ]; then
+            cp "$SCRIPT_DIR/docs/development/$file" "$TARGET_DIR/docs/development/"
+            echo "    ✓ docs/development/$file"
         fi
     done
 
