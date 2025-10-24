@@ -56,10 +56,16 @@ class TestOrchestrateHeadless:
             "--output-dir", str(tmp_path)
         )
 
-        # May not be fully implemented yet
-        # Will implement in subsequent tasks
-        # For now, just verify it doesn't crash with invalid arguments
-        assert returncode in [0, 1]  # Allow both success and "not implemented" errors
+        assert returncode == 0, f"Command failed: {stderr}"
+
+        # Verify DOM was extracted
+        dom_files = list(tmp_path.glob("dom-*.html"))
+        assert len(dom_files) == 1, f"Expected 1 DOM file, found {len(dom_files)}"
+
+        # Verify DOM contains expected content
+        dom_content = dom_files[0].read_text()
+        assert "<html" in dom_content.lower()
+        assert "example" in dom_content.lower()  # example.com should contain "example"
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -80,8 +86,14 @@ class TestOrchestrateHeadless:
             "--output-dir", str(tmp_path)
         )
 
-        # Placeholder test - will verify console logs after implementation
-        assert returncode in [0, 1]
+        assert returncode == 0, f"Command failed: {stderr}"
+
+        # Verify DOM was extracted
+        dom_files = list(tmp_path.glob("dom-*.html"))
+        assert len(dom_files) == 1
+
+        # Console file may or may not exist (depends on whether page logged anything)
+        # Just verify command succeeded
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -102,8 +114,17 @@ class TestOrchestrateHeadless:
             "--output-dir", str(tmp_path)
         )
 
-        # Placeholder test
-        assert returncode in [0, 1]
+        assert returncode == 0, f"Command failed: {stderr}"
+
+        # Verify JSON summary was created
+        summary_files = list(tmp_path.glob("summary-*.json"))
+        assert len(summary_files) == 1, f"Expected 1 JSON summary, found {len(summary_files)}"
+
+        # Verify JSON is valid
+        summary_data = json.loads(summary_files[0].read_text())
+        assert "url" in summary_data
+        assert "mode" in summary_data
+        assert "artifacts" in summary_data
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -124,8 +145,14 @@ class TestOrchestrateHeadless:
             "--output-dir", str(tmp_path)
         )
 
-        # Placeholder test
-        assert returncode in [0, 1]
+        assert returncode == 0, f"Command failed: {stderr}"
+
+        # Verify both summary formats were created
+        json_summaries = list(tmp_path.glob("summary-*.json"))
+        text_summaries = list(tmp_path.glob("summary-*.txt"))
+
+        assert len(json_summaries) == 1, f"Expected 1 JSON summary, found {len(json_summaries)}"
+        assert len(text_summaries) == 1, f"Expected 1 text summary, found {len(text_summaries)}"
 
 
 class TestOrchestrateHeaded:
