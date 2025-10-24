@@ -990,6 +990,99 @@ echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"document.query
   | websocat -n1 "$WS_URL" | jq -r '.result.result.value'
 ```
 
+### Background Process Tracking
+
+When managing multiple debug sessions, track background monitors to prevent redundant processes and ensure clean cleanup.
+
+**Pattern: Track monitors by URL using associative arrays**
+
+```bash
+#!/bin/bash
+declare -A ACTIVE_MONITORS
+
+# Launch monitor for a URL (kills previous monitor for same URL)
+launch_monitor() {
+    local url=$1
+
+    # Kill previous monitor for this URL if exists
+    if [ -n "${ACTIVE_MONITORS[$url]:-}" ]; then
+        echo "Killing previous monitor PID ${ACTIVE_MONITORS[$url]} for $url" >&2
+        kill "${ACTIVE_MONITORS[$url]}" 2>/dev/null || true
+        unset ACTIVE_MONITORS[$url]
+    fi
+
+    # Launch new monitor in background
+    ./debug-orchestrator.sh "$url" --mode=headed --include-console &
+    ACTIVE_MONITORS[$url]=$!
+
+    echo "Monitor launched for $url with PID ${ACTIVE_MONITORS[$url]}" >&2
+}
+
+# Cleanup all tracked monitors
+cleanup_all_monitors() {
+    echo "Cleaning up all monitors..." >&2
+    for url in "${!ACTIVE_MONITORS[@]}"; do
+        echo "  Killing monitor for $url (PID ${ACTIVE_MONITORS[$url]})" >&2
+        kill "${ACTIVE_MONITORS[$url]}" 2>/dev/null || true
+        unset ACTIVE_MONITORS[$url]
+    done
+    echo "All monitors cleaned up" >&2
+}
+
+# Usage examples
+launch_monitor "http://localhost:3000"
+# ... later, relaunch for same URL - kills previous first
+launch_monitor "http://localhost:3000"
+
+# Launch monitor for different URL
+launch_monitor "http://localhost:4000"
+
+# Cleanup all
+cleanup_all_monitors
+```
+
+**Why this pattern:**
+- **No duplicate processes**: Relaunching for same URL kills previous monitor automatically
+- **Clean shutdown**: Single function cleans up all tracked monitors
+- **URL-based organization**: Easy to see which URLs have active monitors
+- **Background-friendly**: Compatible with long-running debug sessions
+
+**Real-world scenario:**
+
+```bash
+# Start monitoring user signup flow
+launch_monitor "http://localhost:3000/signup"
+
+# User reports bug, need to switch to login flow
+launch_monitor "http://localhost:3000/login"
+
+# Retest signup flow - previous login monitor continues
+launch_monitor "http://localhost:3000/signup"
+
+# Done debugging - cleanup all monitors and Chrome instances
+cleanup_all_monitors
+./scripts/cleanup-chrome.sh 9222
+```
+
+**Integration with cleanup script:**
+
+```bash
+# Enhanced cleanup: monitors + Chrome processes
+cleanup_session() {
+    local port=${1:-9222}
+
+    echo "Starting full session cleanup..." >&2
+
+    # Kill all tracked monitors
+    cleanup_all_monitors
+
+    # Kill Chrome and release port
+    ./scripts/cleanup-chrome.sh "$port"
+
+    echo "Session cleanup complete" >&2
+}
+```
+
 ## Summary
 
 This skill provides a lightweight way to inspect websites using Chrome DevTools Protocol (CDP). Key features:
