@@ -283,29 +283,35 @@ class TestCLICommandsWithChrome:
     They will be skipped if Chrome is not available.
     """
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def chrome_session(self):
-        """Launch fresh Chrome instance for testing."""
+        """Launch fresh Chrome instance for each test."""
         import json
         import subprocess
+        import time
 
         # Use chrome-launcher.sh to start fresh Chrome
         launcher_path = Path(__file__).parent.parent.parent / "scripts" / "core" / "chrome-launcher.sh"
 
         session = None
         try:
-            output = subprocess.check_output([
+            # Run chrome-launcher.sh (stderr contains debug messages, ignore them)
+            result = subprocess.run([
                 str(launcher_path),
                 "--mode=headless",
                 "--port=9222",
                 "--url=about:blank"
-            ], timeout=10, stderr=subprocess.PIPE, text=True)
+            ], timeout=10, capture_output=True, text=True)
 
-            session = json.loads(output)
+            # Parse JSON from stdout (last line)
+            session = json.loads(result.stdout)
 
             # Verify Chrome started
             if session.get("status") != "success":
                 pytest.skip(f"Chrome launcher failed: {session.get('message', 'Unknown error')}")
+
+            # Brief pause to ensure Chrome is fully ready
+            time.sleep(0.5)
 
             yield session
 
@@ -317,11 +323,16 @@ class TestCLICommandsWithChrome:
             pytest.skip("chrome-launcher.sh not found")
         finally:
             # Cleanup: kill Chrome process if started
-            if session and "chrome_pid" in session:
-                try:
-                    subprocess.run(["kill", str(session["chrome_pid"])], timeout=5)
-                except Exception:
-                    pass  # Best effort cleanup
+            if session:
+                pid_key = "chrome_pid" if "chrome_pid" in session else "pid"
+                if pid_key in session:
+                    try:
+                        pid = session[pid_key]
+                        subprocess.run(["kill", "-9", str(pid)], timeout=2, check=False)
+                        time.sleep(0.3)  # Brief pause for cleanup
+                    except Exception as e:
+                        # Log but don't fail cleanup
+                        print(f"Warning: Failed to kill Chrome PID {pid}: {e}", file=sys.stderr)
 
     @pytest.mark.integration
     def test_session_list_with_chrome(self, chrome_session):
