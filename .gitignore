@@ -39,6 +39,9 @@ env/
 /tmp/
 *.tmp
 
+# Dual-path validation history (T072 - User Story 5)
+.dual-path-history.json
+
 # Spec-kit (development-only infrastructure)
 .claude/
 .specify/
