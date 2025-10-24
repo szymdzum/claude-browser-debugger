@@ -415,8 +415,8 @@ python3 check-form-state.py <page_id> 9222
 
 ### Internal Documentation
 
-- **Design:** `docs/guides/headed-mode/interactive-workflow-design.md`
-- **API Spec:** `docs/guides/headed-mode/launcher-contract.md`
+- **Design:** `docs/guides/interactive-workflow-design.md`
+- **API Spec:** `docs/guides/launcher-contract.md`
 - **User Guide:** `SKILL.md`
 
 ### Related Scripts

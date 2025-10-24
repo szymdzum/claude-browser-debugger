@@ -406,7 +406,7 @@ For detailed workflow examples, troubleshooting, and CDP command reference:
 - **[docs/workflows.md](../docs/workflows.md)** - Detailed workflow patterns
 - **[docs/troubleshooting.md](../docs/troubleshooting.md)** - Error handling and edge cases
 - **[docs/cdp-commands.md](../docs/cdp-commands.md)** - CDP command reference
-- **[docs/guides/headed-mode/chrome-136-incident.md](../docs/guides/headed-mode/chrome-136-incident.md)** - Chrome 136+ requirements
+- **[docs/guides/chrome-136-incident.md](../docs/guides/chrome-136-incident.md)** - Chrome 136+ requirements
 
 ---
 

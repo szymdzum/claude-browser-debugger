@@ -531,10 +531,10 @@ Expect totals, status histograms, a host breakdown, and the top 10 distinct requ
 
 ## See Also
 
-- **Chrome 136+ Requirements:** `docs/guides/headed-mode/chrome-136-incident.md`
+- **Chrome 136+ Requirements:** `docs/guides/chrome-136-incident.md`
 - **CDP Commands Reference:** `docs/reference/cdp-commands.md`
 - **Troubleshooting Guide:** `docs/guides/troubleshooting.md`
-- **Interactive Workflow Design:** `docs/guides/headed-mode/interactive-workflow-design.md`
+- **Interactive Workflow Design:** `docs/guides/interactive-workflow-design.md`
 
 
 ## Test Section Added for Validation

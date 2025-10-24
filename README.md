@@ -1,15 +1,60 @@
 # Browser Debugger Skill for Claude Code
 
-Provide quick website telemetry directly to Claude Code CLI using native Chrome DevTools Protocol via WebSocket—no MCP overhead. Capture token-efficient DOM snapshots, console logs, and network requests for instant context during debugging workflows. Launch headless Chrome for automated capture or headed mode to interact with the page manually, then extract console, network, or DOM state to validate.
+Give Claude Code instant access to live website telemetry:DOM snapshots, console errors, and network requests directly through Chrome DevTools Protocol. No MCP overhead, just fast, token-efficient debugging context when you need it.
 
-## Why This Exists
+## What This Does
 
-- Provides a lightweight alternative to Chrome Dev MCP for gathering quick page context without burning large MCP token budgets.
-- Avoids heavier stacks like Selenium; depends only on a local headless Chrome session and the CDP websocket.
-- Focuses on the essentials agents usually need: rendered DOM, console output, and network traffic.
-- Intended as a complementary tool—keep Chrome Dev MCP for deep, interactive debugging, but reach for this when you just need fast telemetry to answer a question.
+Ask Claude to debug a website, and this skill automatically:
 
-## Quick Install
+- **Captures the rendered DOM** - See exactly what the browser rendered, not just the source HTML
+- **Monitors JavaScript console** - Catch errors, warnings, and log messages in real-time
+- **Tracks network activity** - Inspect API calls, failed requests, and response data
+- **Works both ways** - Automated headless capture or interactive headed mode for manual testing
+
+## Usage Scenarios
+
+### Scenario 1: Quick DOM Snapshot (Headless)
+```
+Use browser-debugger skill to capture the DOM of http://localhost:3000 in headless mode
+with a 5 second idle timeout. Include console logs and provide a summary.
+```
+
+**Expected workflow:** Launch headless Chrome → Wait for page load → Capture DOM + console → Generate summary → Cleanup
+
+---
+
+### Scenario 2: Interactive Registration Flow (Headed)
+```
+Use browser-debugger skill to launch http://localhost:3000/customer/register in headed mode.
+Let me fill out the registration form manually, then extract the DOM and console logs after I'm done.
+```
+
+**Expected workflow:** Launch visible Chrome → User fills form → Agent waits → Extract DOM on demand → Keep Chrome open for follow-up
+
+---
+
+### Scenario 3: Sign-In Flow with Network Monitoring
+```
+Launch http://localhost:3000/signin with browser-debugger in headed mode. Monitor network
+requests and console logs while I test the login flow. After I submit the form, capture everything.
+```
+
+**Expected workflow:** Launch with console/network collectors → User interacts → Agent captures network traffic → Extract final state
+
+---
+
+### Scenario 4: Multi-Step User Journey
+```
+Use browser-debugger to help me debug the checkout flow on localhost:3000. Start at the homepage,
+let me navigate to the product page, add to cart, and proceed to checkout. Capture the DOM at each
+major step when I tell you.
+```
+
+**Expected workflow:** Persistent Chrome session → Multiple DOM extractions → Agent responds to "capture now" prompts
+
+## Quick Start
+
+### Install
 
 ```bash
 # Recommended: Symlink mode (easy updates)
@@ -19,191 +64,173 @@ Provide quick website telemetry directly to Claude Code CLI using native Chrome 
 ./install.sh --copy
 ```
 
-This installs the skill to `~/.claude/skills/browser-debugger/`
+### Prerequisites
+
+- Python 3.7+ with `websockets` library: `pip3 install websockets --break-system-packages`
+- Chrome or Chromium browser
+- `jq` for JSON parsing: `brew install jq` (macOS) or `apt-get install jq` (Linux)
+
+### Use It
+
+See the [Usage Scenarios](#usage-scenarios) section above for detailed examples. In general, just ask Claude naturally:
+
+- "Debug https://example.com"
+- "Check localhost:3000 for JavaScript errors"
+- "Launch localhost:3000/signin in headed mode and let me test the login flow"
+
+Claude automatically invokes the skill when appropriate.
+
+## Why Use This?
+
+**Lightweight telemetry** - Skip the heavyweight MCP stacks when you just need quick page context. Native Chrome DevTools Protocol over WebSocket keeps overhead minimal.
+
+**Fast answers** - Get rendered DOM, console logs, and network traffic in seconds without complex setup or large token budgets.
+
+**Flexible workflows** - Headless mode for automated capture or headed mode to interact with the page manually before extraction.
+
+**Chrome 136+ compatible** - Automatically handles modern Chrome security requirements (profile isolation for CDP access).
+
+## Usage Examples
+
+### Automated Debugging (Headless)
+
+Claude runs this automatically, but you can test manually:
+
+```bash
+# Full diagnostic capture with console monitoring
+./scripts/core/debug-orchestrator.sh "https://example.com" 15 /tmp/output.log \
+  --include-console --summary=both --idle=3
+```
+
+This captures:
+- Network requests (method, URL, status, timing)
+- Console logs (errors, warnings, info)
+- Structured summary (JSON + human-readable)
+- Automatic idle detection (stops when page settles)
+
+### Interactive Debugging (Headed)
+
+Launch visible Chrome for manual interaction:
+
+```bash
+# Start Chrome with debugging enabled
+./scripts/core/debug-orchestrator.sh "http://localhost:3000/signin" \
+  --mode=headed --include-console
+```
+
+Now you can:
+1. Click through the page manually
+2. Fill out forms
+3. Trigger JavaScript interactions
+4. Extract the final DOM state when ready
+
+Perfect for debugging authentication flows, dynamic content, or complex SPAs.
+
+### Quick DOM Snapshot
+
+```bash
+chrome --headless=new --dump-dom https://example.com > page.html
+```
+
+Simple, fast, no ceremony.
+
+## What You Get
+
+After installation, the skill is available at `~/.claude/skills/browser-debugger/`:
+
+**Core Scripts:**
+- Smart Chrome launcher (headless/headed with automatic profile isolation)
+- Workflow orchestrator (manages collectors, generates summaries)
+- CDP collectors for console, network, and DOM monitoring
+- Session utilities for cleanup and state management
+
+**Documentation:**
+- `SKILL.md` - Comprehensive agent-facing instructions with examples
+- Troubleshooting guides for common Chrome and CDP issues
 
 ## Installation Modes
 
-| Mode | Command | Best For | Updates |
-|------|---------|----------|---------|
-| **Symlink** | `./install.sh --symlink` | Developers who maintain the skill | `git pull` |
-| **Copy** | `./install.sh --copy` | Stable installations | Re-run installer |
+| Mode | Best For | How Updates Work |
+|------|----------|------------------|
+| **Symlink** | Active development | `git pull` syncs immediately |
+| **Copy** | Stable installations | Re-run installer to update |
 
-### Symlink Mode (Recommended)
-- Links `~/.claude/skills/browser-debugger` → this directory
-- Changes sync immediately
-- Perfect for version-controlled installations
-- Use when you maintain the skill
+**Symlink mode** (recommended for most users):
+- Links `~/.claude/skills/browser-debugger` to this repository
+- Changes sync automatically when you update the repo
+- Perfect for version-controlled skill development
 
-### Copy Mode
-- Copies files to `~/.claude/skills/browser-debugger`
-- Standalone installation
-- Use when you want a stable, immutable version
+**Copy mode**:
+- Creates standalone installation in `~/.claude/skills/browser-debugger`
+- No external dependencies after installation
+- Use when you want a frozen, stable version
 
-## Prerequisites
+## Common Use Cases
 
-- Python 3.7+
-- `websockets` library: `pip3 install websockets --break-system-packages`
-- Chrome or Chromium
-- `jq`: `brew install jq` (macOS) or `apt-get install jq` (Linux)
-- `websocat` (optional CLI for ad-hoc CDP commands): `brew install websocat`
+**Debugging JavaScript errors** - See exactly what console errors fire and when
 
-## Usage
+**Inspecting API calls** - Track all network requests with timing and status codes
 
-Start Claude Code and ask questions like:
+**Validating form submissions** - Monitor network traffic when forms POST data
 
-```
-Debug https://example.com
-```
+**Checking authentication flows** - Use headed mode to log in manually, then extract DOM
 
-```
-Check https://example.com for JavaScript errors
-```
+**Analyzing SPA routing** - Capture DOM state after JavaScript renders the page
 
-```
-What API calls does https://example.com make?
-```
-
-Claude will automatically use this skill when appropriate.
-
-### Orchestrator options at a glance
-
-- `--summary=json|both` adds structured output; `json` emits machine-readable data only, `both` keeps the human summary too.
-- `--include-console` launches the console monitor alongside network capture, merging error counts into the summary (log file defaults to `<output>-console.log`, override with `--console-log=...`).
-- `--idle=<seconds>` stops as soon as Chrome has been quiet for the given period, so you can capture long pages without guessing a timeout.
-
-## What gets installed
-
-```
-~/.claude/skills/browser-debugger/
-├── SKILL.md                     # Agent-facing instructions (updated for headed mode + Chrome 136 policy)
-├── README.md                    # Maintainer guide
-├── scripts/
-│   ├── core/
-│   │   ├── chrome-launcher.sh          # Smart launcher (headed/headless, profile isolation, JSON contract)
-│   │   └── debug-orchestrator.sh       # Top-level workflow with summaries and mode selection
-│   ├── collectors/
-│   │   ├── cdp-console.py              # Console monitor (configurable port, idle timeout)
-│   │   ├── cdp-network.py              # Network monitor
-│   │   ├── cdp-network-with-body.py    # Network monitor with selective response bodies
-│   │   ├── cdp-dom-monitor.py          # DOM/form-field change monitor
-│   │   └── cdp-summarize.py            # Shared post-run summariser
-│   └── utilities/
-│       ├── cdp-query.sh                # Ad-hoc CDP command execution
-│       ├── cleanup-chrome.sh           # Clean Chrome debug sessions
-│       ├── save-session.sh             # Save debugging session state
-│       └── resume-session.sh           # Resume saved session
-└── install.sh                   # Installer script
-```
-
-## Manual testing
-
-Test the skill without Claude:
-
-```bash
-# Get DOM
-chrome --headless=new --dump-dom https://example.com
-
-# Monitor console
-chrome --headless=new --remote-debugging-port=9222 https://example.com &
-sleep 2
-PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
-python3 ~/.claude/skills/browser-debugger/scripts/collectors/cdp-console.py $PAGE_ID
-
-# Cleanup
-pkill -f "chrome.*9222"
-```
-
-### Ad-hoc CDP commands with websocat
-
-For live DOM extraction or one-off commands, talk directly to Chrome’s WebSocket endpoint:
-
-```bash
-# Launch Chrome (or use debug-orchestrator.sh)
-
-# Discover the WebSocket debugger URL
-WS_URL=$(curl -s http://localhost:9222/json | jq -r '.[0].webSocketDebuggerUrl')
-
-# Grab the fully hydrated DOM
-echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"document.documentElement.outerHTML","returnByValue":true}}' \
-  | websocat -n1 -B 1048576 "$WS_URL" \
-  | jq -r '.result.result.value' > /tmp/live-dom.html
-
-# Other expressions work too—document title, cookies, screenshots, etc.
-```
-
-Notes:
-- `-B 1048576` bumps the buffer to 1 MB so large pages don’t truncate.
-- Swap the expression to run anything in the page context:
-  ```bash
-  echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"document.title","returnByValue":true}}' \
-    | websocat -n1 "$WS_URL"
-  ```
-- For screenshots, use `Page.captureScreenshot` and base64‑decode the result.
-- Headed sessions launched via `scripts/core/chrome-launcher.sh` already set `--user-data-dir`, which Chrome 136+ requires for CDP.
-
-## Capabilities
-
-- **Headless & headed Chrome support** (headed mode uses an isolated profile so Chrome 136+ keeps answering CDP calls).
-- **DOM snapshots & live form monitoring** via `scripts/collectors/cdp-dom-monitor.py`.
-- **Console + network capture** with idle detection and optional response bodies.
-- **Smart orchestration**: `scripts/core/debug-orchestrator.sh` launches Chrome, hands off to collectors, aggregates results, and emits recovery hints when launch fails.
-- **Chrome 136+ compatible**: Automatically handles `--user-data-dir` requirement for headed mode.
-
-## Files
-
-- `scripts/core/chrome-launcher.sh` – launches Chrome in headless/headed modes, returns JSON contract, enforces `--user-data-dir`.
-- `scripts/core/debug-orchestrator.sh` – wraps the launcher, starts collectors, summarises output.
-- `scripts/collectors/cdp-console.py`, `scripts/collectors/cdp-network.py`, `scripts/collectors/cdp-network-with-body.py` – CDP collectors (shared with orchestrator).
-- `scripts/collectors/cdp-dom-monitor.py` – live DOM/form-field watcher.
-- `scripts/collectors/cdp-summarize.py` – shared summary formatter.
-- `scripts/utilities/` – helper scripts for session management and cleanup.
-- `SKILL.md` – agent-facing skill guide with comprehensive workflow documentation.
-- `README.md`, `install.sh` – maintainer info and installer.
+**Testing responsive layouts** - Extract DOM at different viewport sizes
 
 ## Troubleshooting
 
-### websockets not found
+**Missing `websockets` library:**
 ```bash
 pip3 install websockets --break-system-packages
 ```
 
-### jq not found
+**Missing `jq`:**
 ```bash
 brew install jq  # macOS
 sudo apt-get install jq  # Linux
 ```
 
-### Port 9222 in use
+**Port 9222 already in use:**
 ```bash
 pkill -f "chrome.*9222"
 ```
 
-## Spec-Kit Integration
+**Chrome version issues:**
+This skill automatically handles Chrome 136+ security requirements. If you encounter CDP access issues, check `docs/guides/troubleshooting.md` for detailed guidance.
 
-This project uses [GitHub Spec-Kit](https://github.com/github/spec-kit) for spec-driven development. Spec-Kit provides structured workflows for creating specifications, plans, and tasks before implementation.
+## Advanced Usage
 
-### Available Spec-Kit Commands
+### Custom Timeouts and Idle Detection
 
-Use these slash commands in Claude Code:
+```bash
+# Stop after 3 seconds of inactivity (smart detection)
+./scripts/core/debug-orchestrator.sh "https://example.com" --idle=3
 
-**Core Workflow:**
-- `/speckit.constitution` - Establish project principles and development guidelines
-- `/speckit.specify` - Create functional specifications
-- `/speckit.plan` - Create technical architecture aligned with your stack
-- `/speckit.tasks` - Generate actionable task breakdowns
-- `/speckit.implement` - Execute implementation systematically
+# Fixed 30-second timeout
+./scripts/core/debug-orchestrator.sh "https://example.com" 30 /tmp/out.log
+```
 
-**Optional Enhancements:**
-- `/speckit.clarify` - Resolve ambiguous requirements before planning
-- `/speckit.analyze` - Validate cross-artifact consistency
-- `/speckit.checklist` - Generate quality validation checklists
+### Capture Response Bodies
 
-### Spec-Kit Files
+```bash
+# Include response bodies for failed requests
+./scripts/core/debug-orchestrator.sh "https://example.com" \
+  --include-console \
+  --network-script=cdp-network-with-body.py \
+  --filter-status=error
+```
 
-- `.claude/commands/speckit.*.md` - Slash command definitions
-- `.specify/templates/` - Document templates for specs, plans, and tasks
-- `.specify/scripts/bash/` - Helper scripts for spec-driven workflows
-- `.specify/memory/` - Generated specifications and project artifacts (gitignored)
+### Session Management
+
+```bash
+# Save debugging session for later
+./scripts/utilities/save-session.sh /tmp/debug-session
+
+# Resume saved session
+./scripts/utilities/resume-session.sh /tmp/debug-session
+```
 
 ## Uninstall
 
@@ -211,23 +238,65 @@ Use these slash commands in Claude Code:
 rm -rf ~/.claude/skills/browser-debugger
 ```
 
-## Testing
+---
 
-Test the skill manually after updating Chrome:
+## Technical Details
+
+<details>
+<summary>For maintainers and contributors (click to expand)</summary>
+
+### Architecture
+
+**Chrome Launcher** (`scripts/core/chrome-launcher.sh`):
+- Launches Chrome in headless or headed mode
+- Returns JSON contract with WebSocket URL, PID, and profile path
+- Automatically enforces `--user-data-dir` for Chrome 136+ compatibility
+
+**Debug Orchestrator** (`scripts/core/debug-orchestrator.sh`):
+- High-level workflow coordinator
+- Manages CDP collectors (console, network, DOM)
+- Generates structured summaries
+- Handles cleanup and error recovery
+
+**CDP Collectors** (`scripts/collectors/`):
+- `cdp-console.py` - Console log monitoring with idle detection
+- `cdp-network.py` - Network request/response tracking
+- `cdp-network-with-body.py` - Network capture with selective response bodies
+- `cdp-dom-monitor.py` - Real-time DOM and form field change monitoring
+- `cdp-summarize.py` - Post-capture summary generation
+
+**Utilities** (`scripts/utilities/`):
+- Session save/resume for complex debugging workflows
+- Chrome cleanup for stuck debug sessions
+- Ad-hoc CDP command execution via `cdp-query.sh`
+
+### Manual Testing
+
+Test the skill without Claude:
 
 ```bash
-# Test headed Chrome launch
-./scripts/core/debug-orchestrator.sh "https://example.com" --mode=headed --include-console
+# Test headless DOM capture
+chrome --headless=new --dump-dom https://example.com
 
-# Verify Chrome responds to CDP commands
-WS_URL=$(curl -s http://localhost:9222/json | jq -r '.[0].webSocketDebuggerUrl')
-echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"2+2","returnByValue":true}}' \
-  | websocat -n1 "$WS_URL" | jq
-
-# Expected: {"id":1,"result":{"result":{"type":"number","value":4}}}
-
-# Cleanup
+# Test console monitoring
+chrome --headless=new --remote-debugging-port=9222 https://example.com &
+sleep 2
+PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
+python3 ~/.claude/skills/browser-debugger/scripts/collectors/cdp-console.py $PAGE_ID
 pkill -f "chrome.*9222"
 ```
 
-This verifies Chrome version detection, `--user-data-dir` behaviour, Runtime.evaluate functionality, and DOM access.
+### Chrome 136+ Compatibility
+
+Chrome 136 (March 2025) introduced a security policy that blocks CDP access to default user profiles. This skill automatically handles this by using isolated profiles (`--user-data-dir`) for all headed mode sessions.
+
+See `docs/guides/chrome-136-incident.md` for the full investigation and solution.
+
+### Documentation
+
+- `SKILL.md` - Agent-facing workflow guide
+- `docs/guides/` - User-facing workflow and troubleshooting guides
+- `docs/reference/` - Technical references (CDP commands, Chrome DOM API)
+- `docs/development/` - Skill development best practices
+
+</details>

@@ -231,7 +231,7 @@ PROFILE="$HOME/.chrome-debug-profile"
 chrome --user-data-dir="$PROFILE" --remote-debugging-port=9222 URL
 ```
 
-**See also:** `docs/guides/headed-mode/chrome-136-incident.md` for complete Chrome 136+ documentation.
+**See also:** `docs/guides/chrome-136-incident.md` for complete Chrome 136+ documentation.
 
 ### Issue: "Profile in use" error
 
@@ -631,7 +631,7 @@ echo '{"id":1,"method":"Browser.getVersion"}' | websocat -n1 "$WS_URL" | jq
 # Expected: Immediate response with Chrome version
 ```
 
-**See also:** `docs/guides/headed-mode/chrome-136-incident.md`
+**See also:** `docs/guides/chrome-136-incident.md`
 
 ### Issue: Tilde (~) not expanded in --user-data-dir
 
@@ -784,7 +784,7 @@ if echo '{"id":1,"method":"Browser.getVersion"}' | websocat -n1 "$WS_URL" | jq &
 else
     echo "✗ CDP command failed"
     echo "This may indicate Chrome 136+ without --user-data-dir"
-    echo "See: docs/guides/headed-mode/chrome-136-incident.md"
+    echo "See: docs/guides/chrome-136-incident.md"
     exit 1
 fi
 
@@ -882,12 +882,12 @@ If issues persist after following this guide:
    ```
 
 2. **Check documentation:**
-   - Chrome 136+ Requirements: `docs/guides/headed-mode/chrome-136-incident.md`
+   - Chrome 136+ Requirements: `docs/guides/chrome-136-incident.md`
    - Workflows: `docs/workflows.md`
    - CDP Commands: `docs/cdp-commands.md`
 
 3. **Incident reports:**
-   - Chrome 136 CDP incident: `docs/guides/headed-mode/chrome-136-incident.md`
+   - Chrome 136 CDP incident: `docs/guides/chrome-136-incident.md`
 
 4. **Test scripts:**
    - Smoke test: `tests/smoke-test-headed.sh`
@@ -896,8 +896,8 @@ If issues persist after following this guide:
 
 ## See Also
 
-- **Chrome 136+ Requirements:** `docs/guides/headed-mode/chrome-136-incident.md`
+- **Chrome 136+ Requirements:** `docs/guides/chrome-136-incident.md`
 - **Workflows:** `docs/workflows.md`
 - **CDP Commands:** `docs/cdp-commands.md`
-- **Chrome 136 Incident Report:** `docs/guides/headed-mode/chrome-136-incident.md`
+- **Chrome 136 Incident Report:** `docs/guides/chrome-136-incident.md`
 - **WebSocket Internals:** `docs/websocat-analisys.md`
