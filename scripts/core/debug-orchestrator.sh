@@ -45,6 +45,109 @@ generate_success_json() {
     echo "$data" | jq '. + {status: "success"}' 2>/dev/null
 }
 
+# FR-008: Cleanup function for graceful session termination (T020)
+cleanup_function() {
+    local exit_code=${1:-0}
+
+    echo ""
+    echo "🧹 Cleaning up session..."
+
+    # Stop monitors gracefully (SIGTERM)
+    if [ -n "$NETWORK_JOB" ] && kill -0 "$NETWORK_JOB" 2>/dev/null; then
+        echo "   Stopping network monitor (PID: $NETWORK_JOB)..."
+        kill -TERM "$NETWORK_JOB" 2>/dev/null || true
+        wait "$NETWORK_JOB" 2>/dev/null || true
+    fi
+
+    if [ "$INCLUDE_CONSOLE" -eq 1 ] && [ -n "$CONSOLE_JOB" ] && kill -0 "$CONSOLE_JOB" 2>/dev/null; then
+        echo "   Stopping console monitor (PID: $CONSOLE_JOB)..."
+        kill -TERM "$CONSOLE_JOB" 2>/dev/null || true
+        wait "$CONSOLE_JOB" 2>/dev/null || true
+    fi
+
+    # Extract final DOM snapshot if Chrome is still running
+    if [ -n "$CHROME_PID" ] && kill -0 "$CHROME_PID" 2>/dev/null; then
+        echo "   Extracting final DOM state..."
+
+        # Determine DOM output file path
+        if [[ "$OUTPUT_FILE" == *.* ]]; then
+            base="${OUTPUT_FILE%.*}"
+            base="${base%-network}"  # Remove -network suffix
+            DOM_FILE="${base}-dom.html"
+        else
+            DOM_FILE="${OUTPUT_FILE%-network.log}-dom.html"
+        fi
+
+        # Extract DOM via CDP
+        if [ -n "$WS_URL" ]; then
+            echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"document.documentElement.outerHTML","returnByValue":true}}' \
+                | websocat -n1 -B 1048576 "$WS_URL" 2>/dev/null \
+                | jq -r '.result.result.value' > "$DOM_FILE" 2>/dev/null || true
+
+            if [ -f "$DOM_FILE" ] && [ -s "$DOM_FILE" ]; then
+                echo "   ✅ DOM saved to: $DOM_FILE"
+            fi
+        fi
+    fi
+
+    # Generate summary report
+    if [ -f "$OUTPUT_FILE" ]; then
+        echo "   Generating summary report..."
+
+        # Determine summary file path
+        if [[ "$OUTPUT_FILE" == *.* ]]; then
+            base="${OUTPUT_FILE%.*}"
+            base="${base%-network}"
+            SUMMARY_FILE="${base}-summary.txt"
+        else
+            SUMMARY_FILE="${OUTPUT_FILE%-network.log}-summary.txt"
+        fi
+
+        # Generate summary using cdp-summarize.py
+        python3 "${COLLECTORS_DIR}/cdp-summarize.py" \
+            --network "$OUTPUT_FILE" \
+            --duration "$DURATION" \
+            --format text > "$SUMMARY_FILE" 2>/dev/null || true
+
+        if [ -f "$SUMMARY_FILE" ] && [ -s "$SUMMARY_FILE" ]; then
+            echo "   ✅ Summary saved to: $SUMMARY_FILE"
+        fi
+    fi
+
+    # Terminate Chrome
+    if [ -n "$CHROME_PID" ] && kill -0 "$CHROME_PID" 2>/dev/null; then
+        echo "   Stopping Chrome (PID: $CHROME_PID)..."
+        kill "$CHROME_PID" 2>/dev/null || true
+    fi
+
+    # FR-010: Display all output file locations
+    echo ""
+    echo "📁 Session artifacts preserved:"
+    if [ -f "$OUTPUT_FILE" ]; then
+        echo "   Network log: $OUTPUT_FILE"
+    fi
+    if [ "$INCLUDE_CONSOLE" -eq 1 ] && [ -f "$CONSOLE_LOG" ]; then
+        echo "   Console log: $CONSOLE_LOG"
+    fi
+    if [ -n "$DOM_FILE" ] && [ -f "$DOM_FILE" ]; then
+        echo "   Final DOM: $DOM_FILE"
+    fi
+    if [ -n "$SUMMARY_FILE" ] && [ -f "$SUMMARY_FILE" ]; then
+        echo "   Summary: $SUMMARY_FILE"
+    fi
+
+    if [ "$MODE" = "headed" ] && [ -n "$RESOLVED_PROFILE" ]; then
+        echo ""
+        echo "   💡 Note: Persistent profile kept at: $RESOLVED_PROFILE"
+        echo "   To clean: rm -rf $RESOLVED_PROFILE"
+    fi
+
+    echo ""
+    echo "✅ Session cleanup complete!"
+
+    exit "$exit_code"
+}
+
 # Display ready notification for headed mode (T007-T012: US1)
 display_ready_notification() {
     local url="$1"
@@ -160,18 +263,55 @@ while [ $# -gt 0 ]; do
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+COLLECTORS_DIR="${REPO_ROOT}/scripts/collectors"
+
+# FR-009: Generate unique session ID (timestamp + PID) for file naming
+SESSION_ID=$(date +%Y%m%d-%H%M%S)-$$
+
+# FR-008: Set up SIGINT trap for graceful cleanup (T019)
+trap 'cleanup_function 130' SIGINT
+
+# Verify collector scripts exist before proceeding (FR-002)
+REQUIRED_COLLECTORS=(
+    "${COLLECTORS_DIR}/cdp-network.py"
+    "${COLLECTORS_DIR}/cdp-network-with-body.py"
+    "${COLLECTORS_DIR}/cdp-summarize.py"
+)
+
+if [ "$INCLUDE_CONSOLE" -eq 1 ]; then
+    REQUIRED_COLLECTORS+=("${COLLECTORS_DIR}/cdp-console.py")
+fi
+
+for collector in "${REQUIRED_COLLECTORS[@]}"; do
+    if [ ! -f "$collector" ]; then
+        generate_error_json \
+            "COLLECTOR_MISSING" \
+            "Required collector script not found: $collector" \
+            "Verify repository structure: ls -la ${COLLECTORS_DIR}/"
+        echo ""
+        exit 1
+    fi
+done
+
+# FR-009: Inject SESSION_ID into output file paths for uniqueness
+if [[ "$OUTPUT_FILE" == *.* ]]; then
+    base="${OUTPUT_FILE%.*}"
+    ext="${OUTPUT_FILE##*.}"
+    OUTPUT_FILE="${base}-${SESSION_ID}-network.${ext}"
+else
+    OUTPUT_FILE="${OUTPUT_FILE}-${SESSION_ID}-network.log"
+fi
 
 if [ "$INCLUDE_CONSOLE" -eq 1 ] && [ -z "$CONSOLE_LOG" ]; then
     if [[ "$OUTPUT_FILE" == *.* ]]; then
         base="${OUTPUT_FILE%.*}"
+        # Remove -network suffix if present and replace with -console
+        base="${base%-network}"
         ext="${OUTPUT_FILE##*.}"
-        if [ "$base" = "$OUTPUT_FILE" ]; then
-            CONSOLE_LOG="${OUTPUT_FILE}-console.log"
-        else
-            CONSOLE_LOG="${base}-console.${ext}"
-        fi
+        CONSOLE_LOG="${base}-console.${ext}"
     else
-        CONSOLE_LOG="${OUTPUT_FILE}-console.log"
+        CONSOLE_LOG="${OUTPUT_FILE%-network.log}-console.log"
     fi
 fi
 
@@ -211,7 +351,17 @@ validate_url() {
     local url=$1
     local start_time=$(python3 -c "import time; print(int(time.time() * 1000))")
 
-    echo "🔍 Validating URL: $url" >&2
+    # FR-004: Detect localhost URLs for lenient validation
+    local is_localhost=0
+    if [[ "$url" =~ ^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?(/.*)?$ ]]; then
+        is_localhost=1
+    fi
+
+    if [ $is_localhost -eq 1 ]; then
+        echo "🔍 Validating URL: $url (localhost - lenient validation)" >&2
+    else
+        echo "🔍 Validating URL: $url" >&2
+    fi
 
     # Execute curl and capture both status code and exit code
     local http_code
@@ -251,13 +401,52 @@ validate_url() {
     fi
 
     # Check HTTP status code (application-level errors)
+    # FR-004: Localhost URLs accept any HTTP status (200-599)
+    # FR-005, FR-011: Remote URLs require 200-399, hard stop on 404 and other errors (400-599)
     if [[ "$http_code" =~ ^[23][0-9][0-9]$ ]]; then
         echo "✅ URL validation passed (HTTP $http_code) in ${validation_time}ms" >&2
         return 0
+    elif [ $is_localhost -eq 1 ]; then
+        # Localhost: Accept any HTTP status code (lenient validation)
+        if [[ "$http_code" =~ ^[45][0-9][0-9]$ ]]; then
+            echo "✅ URL validation passed (HTTP $http_code - localhost lenient mode) in ${validation_time}ms" >&2
+            return 0
+        else
+            echo "❌ URL validation failed" >&2
+            echo "   HTTP Status: $http_code" >&2
+            echo "   Error: Unexpected HTTP response from localhost" >&2
+            echo "   Recovery: Verify dev server is running or use --skip-validation" >&2
+            return 1
+        fi
+    elif [[ "$http_code" =~ ^404$ ]]; then
+        # Remote URL: Hard stop on 404
+        echo "❌ URL validation failed - HARD STOP" >&2
+        echo "   HTTP Status: 404 Not Found" >&2
+        echo "   Error: The URL $url does not exist on the server" >&2
+        echo "   Recovery:" >&2
+        echo "     1. Verify the URL is correct (check spelling, path)" >&2
+        echo "     2. Verify the server is running and the resource exists" >&2
+        echo "     3. Use --skip-validation ONLY if you need to generate a new page ID" >&2
+        echo "" >&2
+        echo "   ⚠️  Chrome will NOT be launched. Fix the URL before proceeding." >&2
+        return 1
+    elif [[ "$http_code" =~ ^[45][0-9][0-9]$ ]]; then
+        # Remote URL: Hard stop on other 4xx/5xx errors
+        echo "❌ URL validation failed - HARD STOP" >&2
+        echo "   HTTP Status: $http_code" >&2
+        echo "   Error: URL returned client/server error" >&2
+        echo "   Recovery:" >&2
+        echo "     1. Verify the URL is correct and accessible" >&2
+        echo "     2. Check server logs or status" >&2
+        echo "     3. Use --skip-validation to bypass (not recommended)" >&2
+        echo "" >&2
+        echo "   ⚠️  Chrome will NOT be launched. Fix the URL before proceeding." >&2
+        return 1
     else
         echo "❌ URL validation failed" >&2
-        echo "   Error: URL returned HTTP $http_code" >&2
-        echo "   Recovery: Fix URL or use --skip-validation to bypass" >&2
+        echo "   HTTP Status: $http_code" >&2
+        echo "   Error: Unexpected HTTP response" >&2
+        echo "   Recovery: Verify URL or use --skip-validation" >&2
         return 1
     fi
 }
@@ -361,14 +550,14 @@ summarize_log() {
         args+=("--include-console" "--console" "$CONSOLE_LOG")
     fi
 
-    python3 "${SCRIPT_DIR}/cdp-summarize.py" "${args[@]}"
+    python3 "${COLLECTORS_DIR}/cdp-summarize.py" "${args[@]}"
 }
 
-NETWORK_SCRIPT="${SCRIPT_DIR}/cdp-network.py"
+NETWORK_SCRIPT="${COLLECTORS_DIR}/cdp-network.py"
 NETWORK_ARGS=("$PAGE_ID" "$URL" "--port=${RESOLVED_PORT}")
 
 if [ -n "$FILTER_VALUE" ]; then
-    NETWORK_SCRIPT="${SCRIPT_DIR}/cdp-network-with-body.py"
+    NETWORK_SCRIPT="${COLLECTORS_DIR}/cdp-network-with-body.py"
     NETWORK_ARGS=("$PAGE_ID" "$URL" "$FILTER" "--port=${RESOLVED_PORT}")
 fi
 
@@ -384,12 +573,53 @@ if [ "$INCLUDE_CONSOLE" -eq 1 ]; then
     fi
 
     set +e
-    timeout ${DURATION} python3 "${SCRIPT_DIR}/cdp-console.py" "${CONSOLE_ARGS[@]}" 2>&1 | tee "$CONSOLE_LOG" &
+    timeout ${DURATION} python3 "${COLLECTORS_DIR}/cdp-console.py" "${CONSOLE_ARGS[@]}" 2>&1 | tee "$CONSOLE_LOG" &
     CONSOLE_JOB=$!
     set -e
+
+    # FR-006: Verify console monitor PID
+    sleep 0.5  # Brief delay to allow process startup
+    if ! kill -0 $CONSOLE_JOB 2>/dev/null; then
+        # FR-007: Provide clear error message with command details
+        echo "" >&2
+        echo "❌ Console monitor failed to start" >&2
+        echo "   Command: python3 ${COLLECTORS_DIR}/cdp-console.py ${CONSOLE_ARGS[*]}" >&2
+        echo "   Check log: $CONSOLE_LOG" >&2
+        echo "" >&2
+        echo "💡 Recovery:" >&2
+        echo "   - Verify Python websockets installed: pip3 install websockets --break-system-packages" >&2
+        echo "   - Check CDP port accessibility: curl -s http://localhost:${RESOLVED_PORT}/json" >&2
+        exit 1
+    fi
+    echo "✅ Console monitor started (PID: $CONSOLE_JOB)"
 fi
 
-timeout ${DURATION} python3 "$NETWORK_SCRIPT" "${NETWORK_ARGS[@]}" 2>&1 | tee "$OUTPUT_FILE" || true
+timeout ${DURATION} python3 "$NETWORK_SCRIPT" "${NETWORK_ARGS[@]}" 2>&1 | tee "$OUTPUT_FILE" &
+NETWORK_JOB=$!
+
+# FR-006: Verify network monitor PID
+sleep 0.5  # Brief delay to allow process startup
+if ! kill -0 $NETWORK_JOB 2>/dev/null; then
+    # FR-007: Provide clear error message with command details
+    echo "" >&2
+    echo "❌ Network monitor failed to start" >&2
+    echo "   Command: python3 $NETWORK_SCRIPT ${NETWORK_ARGS[*]}" >&2
+    echo "   Check log: $OUTPUT_FILE" >&2
+    echo "" >&2
+    echo "💡 Recovery:" >&2
+    echo "   - Verify Python websockets installed: pip3 install websockets --break-system-packages" >&2
+    echo "   - Check CDP port accessibility: curl -s http://localhost:${RESOLVED_PORT}/json" >&2
+
+    # Kill console monitor if it was started
+    if [ "$INCLUDE_CONSOLE" -eq 1 ]; then
+        kill $CONSOLE_JOB 2>/dev/null || true
+    fi
+    exit 1
+fi
+echo "✅ Network monitor started (PID: $NETWORK_JOB)"
+
+# Wait for network monitor to complete
+wait $NETWORK_JOB || true
 
 if [ "$INCLUDE_CONSOLE" -eq 1 ]; then
     wait $CONSOLE_JOB || true
@@ -412,13 +642,5 @@ fi
 echo "💾 Full output saved to: $OUTPUT_FILE"
 echo ""
 
-# Step 4: Cleanup
-echo "🧹 Cleaning up..."
-kill $CHROME_PID 2>/dev/null || true
-
-if [ "$MODE" = "headed" ]; then
-    echo "   💡 Note: Persistent profile kept at: $RESOLVED_PROFILE"
-    echo "   To clean: rm -rf $RESOLVED_PROFILE"
-fi
-
-echo "✅ Done!"
+# Step 4: Cleanup - Use centralized cleanup function
+cleanup_function 0

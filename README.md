@@ -1,15 +1,134 @@
-# Browser Debugger Skill for Claude Code
+# ⚡️ Claude Browser Debugger Skill
 
-Give Claude Code instant access to live website telemetry:DOM snapshots, console errors, and network requests directly through Chrome DevTools Protocol. No MCP overhead, just fast, token-efficient debugging context when you need it.
+A lightweight Chrome DevTools Protocol (CDP) skill for Claude Code that provides browser inspection capabilities without the overhead of full MCP implementations. Built on CDP fundamentals with `websocat` and minimal dependencies, this skill launches Chrome on demand and streams DOM structure, console logs, and network activity directly to Claude.
 
-## What This Does
+Designed as a streamlined alternative to dev-tools-mcp, it focuses on quick telemetry capture for common debugging workflows while keeping dependencies minimal and startup fast.
 
-Ask Claude to debug a website, and this skill automatically:
+Give Claude Code direct access to browser state—DOM snapshots, console output, and network traces—without manual screenshot exchanges or copy-pasted error logs.
 
-- **Captures the rendered DOM** - See exactly what the browser rendered, not just the source HTML
-- **Monitors JavaScript console** - Catch errors, warnings, and log messages in real-time
-- **Tracks network activity** - Inspect API calls, failed requests, and response data
-- **Works both ways** - Automated headless capture or interactive headed mode for manual testing
+---
+
+## TL;DR
+- **Minimal setup** – install, provide a URL, get browser telemetry in Claude
+- **Headless or headed** – automated captures or interactive browser sessions for manual testing
+- **Complete picture** – DOM snapshots, console output, network traces, structured summaries
+- **Lightweight** – direct Chrome DevTools Protocol communication with minimal dependencies
+
+---
+
+### Sample CLI Run
+
+Here's what the orchestrator produces when monitoring a page:
+
+```bash
+./scripts/core/debug-orchestrator.sh "https://example.com" 15 /tmp/output.log \
+  --include-console --summary=both --idle=3
+```
+<details>
+<summary>Sample output</summary>
+
+```text
+🔧 Debug Configuration:
+   URL: https://example.com
+   Mode: headless
+   Duration: 15s
+   Output: /tmp/output.log
+   Summary format: both
+   Console log: /tmp/output-console.log
+   Idle timeout: 3s
+
+✅ Chrome launched successfully
+   PID: 73421
+   Port: 9222
+   Page ID: B3F1C93AF7B1138DBF22B723CCDB32C2
+
+📡 Monitoring network traffic for 15s...
+{"event": "request", "url": "https://example.com/", "method": "GET", "requestId": "76F4.1"}
+{"event": "response", "url": "https://example.com/", "status": 200, "statusText": "OK", "mimeType": "text/html", "requestId": "76F4.1"}
+{"type": "log", "timestamp": 1.0, "message": "Rendering home route", "source": "console-api"}
+
+📊 Analysis Results:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Total Requests:  3
+   Total Responses: 3
+   Failed Requests: 0
+
+📥 Top 10 Requests:
+   GET https://example.com/
+   GET https://example.com/static/app.css
+   GET https://example.com/static/app.js
+
+📤 Response Status Codes:
+      3 200
+
+🖥️ Console Summary:
+   Entries: 2
+   Levels:
+      log: 1
+      error: 1
+   Sample Errors:
+      Uncaught TypeError: Cannot read properties of undefined [https://example.com/static/app.js:42]
+
+🧮 JSON Summary:
+{
+  "meta": {
+    "log_path": "/tmp/output.log",
+    "console_log": "/tmp/output-console.log",
+    "generated_at": "2025-10-24T18:40:12.378512+00:00",
+    "duration_seconds": 15.0,
+    "filter": null,
+    "total_events": 6,
+    "unique_hosts": 1
+  },
+  "network": {
+    "request_count": 3,
+    "response_count": 3,
+    "failure_count": 0,
+    "methods": {
+      "GET": 3
+    },
+    "status_codes": {
+      "200": 3
+    },
+    "top_requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/"
+      },
+      {
+        "method": "GET",
+        "url": "https://example.com/static/app.css"
+      },
+      {
+        "method": "GET",
+        "url": "https://example.com/static/app.js"
+      }
+    ],
+    "failures": []
+  },
+  "console": {
+    "entry_count": 2,
+    "levels": {
+      "log": 1,
+      "error": 1
+    },
+    "sample_errors": [
+      {
+        "message": "Uncaught TypeError: Cannot read properties of undefined",
+        "url": "https://example.com/static/app.js",
+        "lineNumber": 42
+      }
+    ]
+  }
+}
+
+💾 Full output saved to: /tmp/output.log
+🧹 Cleaning up...
+✅ Done!
+```
+</details>
+
+---
 
 ## Usage Scenarios
 
@@ -18,8 +137,7 @@ Ask Claude to debug a website, and this skill automatically:
 Use browser-debugger skill to capture the DOM of http://localhost:3000 in headless mode
 with a 5 second idle timeout. Include console logs and provide a summary.
 ```
-
-**Expected workflow:** Launch headless Chrome → Wait for page load → Capture DOM + console → Generate summary → Cleanup
+**Expected workflow:** Headless Chrome launches, waits for network idle, captures DOM and console logs, generates a summary, then terminates.
 
 ---
 
@@ -28,8 +146,7 @@ with a 5 second idle timeout. Include console logs and provide a summary.
 Use browser-debugger skill to launch http://localhost:3000/customer/register in headed mode.
 Let me fill out the registration form manually, then extract the DOM and console logs after I'm done.
 ```
-
-**Expected workflow:** Launch visible Chrome → User fills form → Agent waits → Extract DOM on demand → Keep Chrome open for follow-up
+**Expected workflow:** Visible Chrome launches, user interacts with the page manually, Claude monitors in the background, DOM and logs are captured on request, browser remains available for additional testing.
 
 ---
 
@@ -38,8 +155,7 @@ Let me fill out the registration form manually, then extract the DOM and console
 Launch http://localhost:3000/signin with browser-debugger in headed mode. Monitor network
 requests and console logs while I test the login flow. After I submit the form, capture everything.
 ```
-
-**Expected workflow:** Launch with console/network collectors → User interacts → Agent captures network traffic → Extract final state
+**Expected workflow:** Console and network monitoring begin, user tests the login flow, failed requests are highlighted, final DOM and logs are captured together.
 
 ---
 
@@ -49,254 +165,149 @@ Use browser-debugger to help me debug the checkout flow on localhost:3000. Start
 let me navigate to the product page, add to cart, and proceed to checkout. Capture the DOM at each
 major step when I tell you.
 ```
+**Expected workflow:** Persistent Chrome session, DOM captured at each checkpoint on request, complete history of the checkout flow available for analysis.
 
-**Expected workflow:** Persistent Chrome session → Multiple DOM extractions → Agent responds to "capture now" prompts
-
-## Quick Start
-
-### Install
-
+For command-line testing:
 ```bash
-# Recommended: Symlink mode (easy updates)
-./install.sh --symlink
-
-# Alternative: Copy mode (standalone)
-./install.sh --copy
-```
-
-### Prerequisites
-
-- Python 3.7+ with `websockets` library: `pip3 install websockets --break-system-packages`
-- Chrome or Chromium browser
-- `jq` for JSON parsing: `brew install jq` (macOS) or `apt-get install jq` (Linux)
-
-### Use It
-
-See the [Usage Scenarios](#usage-scenarios) section above for detailed examples. In general, just ask Claude naturally:
-
-- "Debug https://example.com"
-- "Check localhost:3000 for JavaScript errors"
-- "Launch localhost:3000/signin in headed mode and let me test the login flow"
-
-Claude automatically invokes the skill when appropriate.
-
-## Why Use This?
-
-**Lightweight telemetry** - Skip the heavyweight MCP stacks when you just need quick page context. Native Chrome DevTools Protocol over WebSocket keeps overhead minimal.
-
-**Fast answers** - Get rendered DOM, console logs, and network traffic in seconds without complex setup or large token budgets.
-
-**Flexible workflows** - Headless mode for automated capture or headed mode to interact with the page manually before extraction.
-
-**Chrome 136+ compatible** - Automatically handles modern Chrome security requirements (profile isolation for CDP access).
-
-## Usage Examples
-
-### Automated Debugging (Headless)
-
-Claude runs this automatically, but you can test manually:
-
-```bash
-# Full diagnostic capture with console monitoring
 ./scripts/core/debug-orchestrator.sh "https://example.com" 15 /tmp/output.log \
   --include-console --summary=both --idle=3
 ```
+This produces network timelines, console output, and both JSON and human-readable summaries.
 
-This captures:
-- Network requests (method, URL, status, timing)
-- Console logs (errors, warnings, info)
-- Structured summary (JSON + human-readable)
-- Automatic idle detection (stops when page settles)
+---
 
-### Interactive Debugging (Headed)
+## Who This Helps
 
-Launch visible Chrome for manual interaction:
+- **Front-end engineers** debugging complex UI state issues that require multiple interactions to reproduce
+- **QA teams** who need quick browser telemetry capture during manual testing workflows
+- **Backend developers** validating client-side API requests and response handling
+- **Full-stack developers** working on localhost who need efficient browser debugging integrated with Claude
 
-```bash
-# Start Chrome with debugging enabled
-./scripts/core/debug-orchestrator.sh "http://localhost:3000/signin" \
-  --mode=headed --include-console
-```
+---
 
-Now you can:
-1. Click through the page manually
-2. Fill out forms
-3. Trigger JavaScript interactions
-4. Extract the final DOM state when ready
-
-Perfect for debugging authentication flows, dynamic content, or complex SPAs.
-
-### Quick DOM Snapshot
+## Installation
 
 ```bash
-chrome --headless=new --dump-dom https://example.com > page.html
+# Recommended: symlink install (updates follow git pulls automatically)
+./install.sh --symlink
+
+# Alternative: standalone copy
+./install.sh --copy
 ```
 
-Simple, fast, no ceremony.
+**Prerequisites**
+- Python 3.7+ with `websockets`: `pip3 install websockets --break-system-packages`
+- Chrome or Chromium (headless or headed mode)
+- `jq` for JSON parsing: `brew install jq` (macOS) or `apt-get install jq` (Linux)
 
-## What You Get
+Once installed, Claude Code can invoke the skill at `~/.claude/skills/browser-debugger` when you request browser debugging.
 
-After installation, the skill is available at `~/.claude/skills/browser-debugger/`:
-
-**Core Scripts:**
-- Smart Chrome launcher (headless/headed with automatic profile isolation)
-- Workflow orchestrator (manages collectors, generates summaries)
-- CDP collectors for console, network, and DOM monitoring
-- Session utilities for cleanup and state management
-
-**Documentation:**
-- `SKILL.md` - Comprehensive agent-facing instructions with examples
-- Troubleshooting guides for common Chrome and CDP issues
-
-## Installation Modes
-
-| Mode | Best For | How Updates Work |
-|------|----------|------------------|
-| **Symlink** | Active development | `git pull` syncs immediately |
-| **Copy** | Stable installations | Re-run installer to update |
-
-**Symlink mode** (recommended for most users):
-- Links `~/.claude/skills/browser-debugger` to this repository
-- Changes sync automatically when you update the repo
-- Perfect for version-controlled skill development
-
-**Copy mode**:
-- Creates standalone installation in `~/.claude/skills/browser-debugger`
-- No external dependencies after installation
-- Use when you want a frozen, stable version
+---
 
 ## Common Use Cases
 
-**Debugging JavaScript errors** - See exactly what console errors fire and when
+- **Inspect API calls** – capture all network requests and responses (headless or headed)
+- **Validate form submissions** – monitor POST payloads and server responses in real-time
+- **Debug SPA routing** – capture DOM state after client-side navigation completes
+- **Responsive testing** – capture DOM at different viewport sizes on request
 
-**Inspecting API calls** - Track all network requests with timing and status codes
+See `SKILL.md` for additional workflow examples and detailed usage instructions.
 
-**Validating form submissions** - Monitor network traffic when forms POST data
-
-**Checking authentication flows** - Use headed mode to log in manually, then extract DOM
-
-**Analyzing SPA routing** - Capture DOM state after JavaScript renders the page
-
-**Testing responsive layouts** - Extract DOM at different viewport sizes
+---
 
 ## Troubleshooting
 
-**Missing `websockets` library:**
 ```bash
+# Missing websockets?
 pip3 install websockets --break-system-packages
-```
 
-**Missing `jq`:**
-```bash
-brew install jq  # macOS
-sudo apt-get install jq  # Linux
-```
+# Need jq?
+brew install jq            # macOS
+sudo apt-get install jq    # Linux
 
-**Port 9222 already in use:**
-```bash
+# Port 9222 already in use?
 pkill -f "chrome.*9222"
 ```
 
-**Chrome version issues:**
-This skill automatically handles Chrome 136+ security requirements. If you encounter CDP access issues, check `docs/guides/troubleshooting.md` for detailed guidance.
+This skill handles Chrome 136+ profile isolation requirements automatically. For additional troubleshooting, see `docs/guides/troubleshooting.md`.
+
+---
 
 ## Advanced Usage
 
-### Custom Timeouts and Idle Detection
-
 ```bash
-# Stop after 3 seconds of inactivity (smart detection)
+# Idle detection (stops after 3s of network inactivity)
 ./scripts/core/debug-orchestrator.sh "https://example.com" --idle=3
 
-# Fixed 30-second timeout
+# Fixed timeout (30 seconds)
 ./scripts/core/debug-orchestrator.sh "https://example.com" 30 /tmp/out.log
-```
 
-### Capture Response Bodies
-
-```bash
-# Include response bodies for failed requests
+# Capture response bodies for failed requests
 ./scripts/core/debug-orchestrator.sh "https://example.com" \
   --include-console \
   --network-script=cdp-network-with-body.py \
   --filter-status=error
-```
 
-### Session Management
-
-```bash
-# Save debugging session for later
+# Session persistence
 ./scripts/utilities/save-session.sh /tmp/debug-session
-
-# Resume saved session
 ./scripts/utilities/resume-session.sh /tmp/debug-session
 ```
 
-## Uninstall
-
+**Uninstall**
 ```bash
 rm -rf ~/.claude/skills/browser-debugger
 ```
 
 ---
 
-## Technical Details
+## Architecture
 
 <details>
-<summary>For maintainers and contributors (click to expand)</summary>
+<summary>Technical details and documentation</summary>
 
-### Architecture
+### Core Components
 
-**Chrome Launcher** (`scripts/core/chrome-launcher.sh`):
-- Launches Chrome in headless or headed mode
-- Returns JSON contract with WebSocket URL, PID, and profile path
-- Automatically enforces `--user-data-dir` for Chrome 136+ compatibility
-
-**Debug Orchestrator** (`scripts/core/debug-orchestrator.sh`):
-- High-level workflow coordinator
-- Manages CDP collectors (console, network, DOM)
-- Generates structured summaries
-- Handles cleanup and error recovery
-
-**CDP Collectors** (`scripts/collectors/`):
-- `cdp-console.py` - Console log monitoring with idle detection
-- `cdp-network.py` - Network request/response tracking
-- `cdp-network-with-body.py` - Network capture with selective response bodies
-- `cdp-dom-monitor.py` - Real-time DOM and form field change monitoring
-- `cdp-summarize.py` - Post-capture summary generation
-
-**Utilities** (`scripts/utilities/`):
-- Session save/resume for complex debugging workflows
-- Chrome cleanup for stuck debug sessions
-- Ad-hoc CDP command execution via `cdp-query.sh`
+- **`scripts/core/chrome-launcher.sh`** – Launches Chrome (headless/headed), manages isolated profiles for Chrome 136+, returns CDP WebSocket URL
+- **`scripts/core/debug-orchestrator.sh`** – Coordinates collectors, manages lifecycle, generates structured summaries
+- **`scripts/collectors/`** – Console logging, network monitoring (with optional response bodies), DOM change detection, summary generation
+- **`scripts/utilities/`** – Session save/resume, Chrome cleanup, ad-hoc CDP command execution
 
 ### Manual Testing
 
-Test the skill without Claude:
-
 ```bash
-# Test headless DOM capture
+# Quick DOM dump
 chrome --headless=new --dump-dom https://example.com
 
-# Test console monitoring
+# Console monitoring example
 chrome --headless=new --remote-debugging-port=9222 https://example.com &
 sleep 2
 PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
-python3 ~/.claude/skills/browser-debugger/scripts/collectors/cdp-console.py $PAGE_ID
+python3 ~/.claude/skills/browser-debugger/scripts/collectors/cdp-console.py "$PAGE_ID"
 pkill -f "chrome.*9222"
 ```
 
-### Chrome 136+ Compatibility
-
-Chrome 136 (March 2025) introduced a security policy that blocks CDP access to default user profiles. This skill automatically handles this by using isolated profiles (`--user-data-dir`) for all headed mode sessions.
-
-See `docs/guides/chrome-136-incident.md` for the full investigation and solution.
-
 ### Documentation
 
-- `SKILL.md` - Agent-facing workflow guide
-- `docs/guides/` - User-facing workflow and troubleshooting guides
-- `docs/reference/` - Technical references (CDP commands, Chrome DOM API)
-- `docs/development/` - Skill development best practices
+- **`SKILL.md`** – Agent-facing workflow instructions
+- **`docs/guides/`** – User workflows and troubleshooting
+- **`docs/reference/`** – CDP command reference and DOM APIs
+- **`docs/development/`** – Contributor guidelines
 
 </details>
+
+---
+
+## Why This Over chrome-dev-mcp?
+
+This skill is designed as a **lightweight alternative** to chrome-dev-mcp for common browser debugging workflows:
+
+- **Faster startup** – Direct CDP with minimal dependencies vs. full MCP server initialization
+- **Simpler deployment** – Single skill installation vs. MCP server + client configuration
+- **Focused scope** – Optimized for quick telemetry capture (DOM, console, network) rather than comprehensive browser automation
+- **Token efficient** – Structured output designed for AI consumption without MCP protocol overhead
+
+Choose chrome-dev-mcp when you need comprehensive browser automation capabilities. Choose this skill when you need quick, focused browser inspection integrated with Claude Code.
+
+---
+
+Ready to integrate browser debugging with Claude? Install the skill and start capturing DOM, console, and network data directly in your conversations.

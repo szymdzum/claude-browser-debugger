@@ -9,9 +9,11 @@ This document provides complete workflow examples for using the browser-debugger
 - [Headless Capture Workflow](#headless-capture-workflow)
 - [Headed Mode Workflow](#headed-mode-workflow)
 - [Interactive DOM Inspection Workflow](#interactive-dom-inspection-workflow)
+- [Graceful Session Cleanup](#graceful-session-cleanup)
 - [Manual CDP Control](#manual-cdp-control)
 - [Session Management](#session-management)
 - [Common Debugging Workflows](#common-debugging-workflows)
+- [Error Handling](#error-handling)
 
 ---
 
@@ -263,6 +265,205 @@ Reference: DOM saved at /tmp/live-dom.html
 8. ☐ Get context (current URL, title)
 9. ☐ Analyze DOM with grep/jq
 10. ☐ Provide debugging insights to user
+
+---
+
+## Graceful Session Cleanup
+
+**Use case:** Stop debugging sessions cleanly with automatic artifact preservation
+
+The orchestrator now supports graceful cleanup when you press **Ctrl+C (SIGINT)** during a session. This ensures all captured data is preserved and resources are released properly.
+
+### How It Works
+
+When you press Ctrl+C during an active session:
+
+1. **Monitors stopped gracefully** - Network and console monitors receive SIGTERM
+2. **Final DOM extracted** - Current page state captured via CDP
+3. **Summary generated** - Text summary of captured data created
+4. **Chrome terminated** - Browser process stopped cleanly
+5. **All artifacts preserved** - File locations displayed for review
+
+### Example: Early Session Termination
+
+```bash
+# Start a session
+./scripts/core/debug-orchestrator.sh "http://localhost:3000/dashboard" \
+  --mode=headed --include-console
+
+# (Interact with the page...)
+# Press Ctrl+C when ready to stop
+
+# Output:
+🧹 Cleaning up session...
+   Stopping network monitor (PID: 12345)...
+   Stopping console monitor (PID: 12346)...
+   Extracting final DOM state...
+   ✅ DOM saved to: /tmp/page-debug-20251024-143522-12345-dom.html
+   Generating summary report...
+   ✅ Summary saved to: /tmp/page-debug-20251024-143522-12345-summary.txt
+   Stopping Chrome (PID: 12347)...
+
+📁 Session artifacts preserved:
+   Network log: /tmp/page-debug-20251024-143522-12345-network.log
+   Console log: /tmp/page-debug-20251024-143522-12345-console.log
+   Final DOM: /tmp/page-debug-20251024-143522-12345-dom.html
+   Summary: /tmp/page-debug-20251024-143522-12345-summary.txt
+
+   💡 Note: Persistent profile kept at: /Users/user/.chrome-debug-profile
+   To clean: rm -rf /Users/user/.chrome-debug-profile
+
+✅ Session cleanup complete!
+```
+
+### Unique Session File Naming
+
+All output files now include a unique session ID (timestamp + PID) to prevent conflicts when running concurrent sessions:
+
+**File naming pattern:**
+```
+{base}-{YYYYMMDD-HHMMSS-PID}-{type}.{ext}
+```
+
+**Examples:**
+```bash
+# Single session
+./scripts/core/debug-orchestrator.sh "http://localhost:3000" 30 /tmp/debug.log
+# Creates: /tmp/debug-20251024-143522-12345-network.log
+#          /tmp/debug-20251024-143522-12345-console.log (if --include-console)
+
+# Concurrent sessions (no conflicts)
+./scripts/core/debug-orchestrator.sh "http://example.com/login" 30 /tmp/test.log &
+./scripts/core/debug-orchestrator.sh "http://example.com/signup" 30 /tmp/test.log &
+# Creates: /tmp/test-20251024-143522-12345-network.log
+#          /tmp/test-20251024-143528-12678-network.log
+```
+
+### Benefits
+
+- **No data loss** - Partial captures preserved even on early termination
+- **Clean resource management** - No orphaned Chrome processes or monitors
+- **Concurrent-safe** - Multiple sessions can run without file conflicts
+- **Immediate feedback** - File locations displayed for quick review
+
+---
+
+## Error Handling
+
+The orchestrator implements robust error detection with clear recovery guidance.
+
+### URL Validation Errors
+
+#### 404 Hard-Stop (Remote URLs)
+
+```bash
+./scripts/core/debug-orchestrator.sh "https://example.com/nonexistent"
+
+# Output:
+❌ URL validation failed - HARD STOP
+   HTTP Status: 404 Not Found
+   Error: The URL https://example.com/nonexistent does not exist on the server
+   Recovery:
+     1. Verify the URL is correct (check spelling, path)
+     2. Verify the server is running and the resource exists
+     3. Use --skip-validation ONLY if you need to generate a new page ID
+
+   ⚠️  Chrome will NOT be launched. Fix the URL before proceeding.
+```
+
+**Key behaviors:**
+- Remote URLs require 200-399 HTTP status (strict validation)
+- 404 errors trigger immediate hard-stop with detailed guidance
+- No Chrome launch occurs when validation fails
+- Clear distinction between localhost (lenient) and remote (strict) validation
+
+#### Localhost Lenient Validation
+
+```bash
+./scripts/core/debug-orchestrator.sh "http://localhost:3000/signin"
+
+# Output (for any HTTP status 200-599):
+🔍 Validating URL: http://localhost:3000/signin (localhost - lenient validation)
+✅ URL validation passed (HTTP 404 - localhost lenient mode) in 125ms
+```
+
+**Key behaviors:**
+- Localhost URLs (localhost, 127.0.0.1) accept any HTTP status 200-599
+- No `--skip-validation` flag needed for local development
+- Designed for dev servers that may return 404 for authenticated routes
+
+### Collector Script Validation
+
+```bash
+# If collector scripts are missing/moved
+./scripts/core/debug-orchestrator.sh "http://example.com"
+
+# Output:
+{
+  "status": "error",
+  "code": "COLLECTOR_MISSING",
+  "message": "Required collector script not found: /path/to/scripts/collectors/cdp-network.py",
+  "recovery": "Verify repository structure: ls -la /path/to/scripts/collectors/"
+}
+```
+
+**Key behaviors:**
+- All collector scripts validated before Chrome launch
+- Clear error message with missing script path
+- Recovery guidance provided
+
+### Port Conflict Detection
+
+```bash
+# If port 9222 is already in use
+./scripts/core/debug-orchestrator.sh "http://localhost:3000"
+
+# Output:
+❌ Chrome launch failed
+   Error: PORT_BUSY
+   Message: Port 9222 is already in use by PID 12345
+
+💡 Recovery:
+   pkill -f 'chrome.*9222' && sleep 1
+```
+
+**Key behaviors:**
+- Port conflicts detected during Chrome launch
+- Displays owning PID for cleanup
+- Suggests specific pkill command
+
+### Monitor Startup Failures
+
+```bash
+# If Python websockets library is missing
+./scripts/core/debug-orchestrator.sh "http://localhost:3000" --include-console
+
+# Output:
+❌ Console monitor failed to start
+   Command: python3 /path/to/scripts/collectors/cdp-console.py 12345 --port=9222
+   Check log: /tmp/page-debug-20251024-143522-12345-console.log
+
+💡 Recovery:
+   - Verify Python websockets installed: pip3 install websockets --break-system-packages
+   - Check CDP port accessibility: curl -s http://localhost:9222/json
+```
+
+**Key behaviors:**
+- Monitor PIDs verified after spawn (`kill -0 $PID`)
+- Detailed error message with exact command attempted
+- Recovery steps include dependency verification
+- Partial cleanup performed (other monitors stopped)
+
+### Skip Validation Flag
+
+For intentionally unreachable URLs (e.g., testing CDP behavior on invalid pages):
+
+```bash
+./scripts/core/debug-orchestrator.sh "https://invalid-domain-12345.com" \
+  --skip-validation --summary=both
+```
+
+**Warning:** Only use `--skip-validation` when you specifically need to bypass URL checks. This is rarely needed and can lead to unexpected behavior.
 
 ---
 
@@ -537,9 +738,7 @@ Expect totals, status histograms, a host breakdown, and the top 10 distinct requ
 - **Interactive Workflow Design:** `docs/guides/interactive-workflow-design.md`
 
 
-## Test Section Added for Validation
+## Recent Updates
 
-This is a test section to verify that reference files can be updated without touching SKILL.md.
-
-**Test completed successfully** ✅
+**2025-10-24**: Added graceful session cleanup (SIGINT trap), unique session file naming, and enhanced error handling sections. Updated to reflect 006-fix-orchestrator-paths feature improvements.
 
