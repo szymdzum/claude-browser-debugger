@@ -88,23 +88,67 @@ if [ "$INSTALL_MODE" == "symlink" ]; then
 else
     echo "📄 Copying files..."
     mkdir -p "$TARGET_DIR"
+    mkdir -p "$TARGET_DIR/scripts/core"
+    mkdir -p "$TARGET_DIR/scripts/collectors"
+    mkdir -p "$TARGET_DIR/scripts/utilities"
+    mkdir -p "$TARGET_DIR/docs"
 
-    # Copy all necessary runtime files
-    for file in SKILL.md README.md install.sh \
-                chrome-launcher.sh debug-orchestrator.sh \
-                cdp-console.py cdp-network.py cdp-network-with-body.py cdp-dom-monitor.py \
-                cdp-summarize.py; do
+    # Copy root-level files
+    for file in SKILL.md README.md install.sh; do
         if [ -f "$SCRIPT_DIR/$file" ]; then
             cp "$SCRIPT_DIR/$file" "$TARGET_DIR/"
-            # Make scripts executable
-            if [[ "$file" == *.py ]] || [[ "$file" == *.sh ]]; then
-                chmod +x "$TARGET_DIR/$file"
-            fi
             echo "  ✓ $file"
         else
             echo "  ⚠️  $file not found (skipping)"
         fi
     done
+
+    # Copy core scripts
+    for file in chrome-launcher.sh debug-orchestrator.sh; do
+        if [ -f "$SCRIPT_DIR/scripts/core/$file" ]; then
+            cp "$SCRIPT_DIR/scripts/core/$file" "$TARGET_DIR/scripts/core/"
+            chmod +x "$TARGET_DIR/scripts/core/$file"
+            echo "  ✓ scripts/core/$file"
+        else
+            echo "  ⚠️  scripts/core/$file not found (skipping)"
+        fi
+    done
+
+    # Copy collector scripts
+    for file in cdp-console.py cdp-network.py cdp-network-with-body.py cdp-dom-monitor.py cdp-summarize.py; do
+        if [ -f "$SCRIPT_DIR/scripts/collectors/$file" ]; then
+            cp "$SCRIPT_DIR/scripts/collectors/$file" "$TARGET_DIR/scripts/collectors/"
+            chmod +x "$TARGET_DIR/scripts/collectors/$file"
+            echo "  ✓ scripts/collectors/$file"
+        else
+            echo "  ⚠️  scripts/collectors/$file not found (skipping)"
+        fi
+    done
+
+    # Copy utility scripts
+    for file in cdp-query.sh cleanup-chrome.sh save-session.sh resume-session.sh; do
+        if [ -f "$SCRIPT_DIR/scripts/utilities/$file" ]; then
+            cp "$SCRIPT_DIR/scripts/utilities/$file" "$TARGET_DIR/scripts/utilities/"
+            chmod +x "$TARGET_DIR/scripts/utilities/$file"
+            echo "  ✓ scripts/utilities/$file"
+        else
+            echo "  ⚠️  scripts/utilities/$file not found (skipping)"
+        fi
+    done
+
+    # Copy documentation files
+    for file in chrome-136-requirements.md workflows.md cdp-commands.md troubleshooting.md; do
+        if [ -f "$SCRIPT_DIR/docs/$file" ]; then
+            cp "$SCRIPT_DIR/docs/$file" "$TARGET_DIR/docs/"
+            echo "  ✓ docs/$file"
+        fi
+    done
+
+    # Copy scripts/README.md
+    if [ -f "$SCRIPT_DIR/scripts/README.md" ]; then
+        cp "$SCRIPT_DIR/scripts/README.md" "$TARGET_DIR/scripts/"
+        echo "  ✓ scripts/README.md"
+    fi
 
     echo ""
     echo "💡 To update: Re-run this installer"
