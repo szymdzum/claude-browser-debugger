@@ -77,13 +77,21 @@ Claude will automatically use this skill when appropriate.
 ~/.claude/skills/browser-debugger/
 ├── SKILL.md                     # Agent-facing instructions (updated for headed mode + Chrome 136 policy)
 ├── README.md                    # Maintainer guide
-├── chrome-launcher.sh           # Smart launcher (headed/headless, profile isolation, JSON contract)
-├── debug-orchestrator.sh        # Top-level workflow with summaries and mode selection
-├── cdp-console.py               # Console monitor (configurable port, idle timeout)
-├── cdp-network.py               # Network monitor
-├── cdp-network-with-body.py     # Network monitor with selective response bodies
-├── cdp-dom-monitor.py           # DOM/form-field change monitor
-├── cdp-summarize.py             # Shared post-run summariser
+├── scripts/
+│   ├── core/
+│   │   ├── chrome-launcher.sh          # Smart launcher (headed/headless, profile isolation, JSON contract)
+│   │   └── debug-orchestrator.sh       # Top-level workflow with summaries and mode selection
+│   ├── collectors/
+│   │   ├── cdp-console.py              # Console monitor (configurable port, idle timeout)
+│   │   ├── cdp-network.py              # Network monitor
+│   │   ├── cdp-network-with-body.py    # Network monitor with selective response bodies
+│   │   ├── cdp-dom-monitor.py          # DOM/form-field change monitor
+│   │   └── cdp-summarize.py            # Shared post-run summariser
+│   └── utilities/
+│       ├── cdp-query.sh                # Ad-hoc CDP command execution
+│       ├── cleanup-chrome.sh           # Clean Chrome debug sessions
+│       ├── save-session.sh             # Save debugging session state
+│       └── resume-session.sh           # Resume saved session
 └── install.sh                   # Installer script
 ```
 
@@ -99,7 +107,7 @@ chrome --headless=new --dump-dom https://example.com
 chrome --headless=new --remote-debugging-port=9222 https://example.com &
 sleep 2
 PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
-python3 ~/.claude/skills/browser-debugger/cdp-console.py $PAGE_ID
+python3 ~/.claude/skills/browser-debugger/scripts/collectors/cdp-console.py $PAGE_ID
 
 # Cleanup
 pkill -f "chrome.*9222"
@@ -131,23 +139,24 @@ Notes:
     | websocat -n1 "$WS_URL"
   ```
 - For screenshots, use `Page.captureScreenshot` and base64‑decode the result.
-- Headed sessions launched via `chrome-launcher.sh` already set `--user-data-dir`, which Chrome 136+ requires for CDP.
+- Headed sessions launched via `scripts/core/chrome-launcher.sh` already set `--user-data-dir`, which Chrome 136+ requires for CDP.
 
 ## Capabilities
 
 - **Headless & headed Chrome support** (headed mode uses an isolated profile so Chrome 136+ keeps answering CDP calls).
-- **DOM snapshots & live form monitoring** via `cdp-dom-monitor.py`.
+- **DOM snapshots & live form monitoring** via `scripts/collectors/cdp-dom-monitor.py`.
 - **Console + network capture** with idle detection and optional response bodies.
-- **Smart orchestration**: `debug-orchestrator.sh` launches Chrome, hands off to collectors, aggregates results, and emits recovery hints when launch fails.
+- **Smart orchestration**: `scripts/core/debug-orchestrator.sh` launches Chrome, hands off to collectors, aggregates results, and emits recovery hints when launch fails.
 - **Chrome 136+ compatible**: Automatically handles `--user-data-dir` requirement for headed mode.
 
 ## Files
 
-- `chrome-launcher.sh` – launches Chrome in headless/headed modes, returns JSON contract, enforces `--user-data-dir`.
-- `debug-orchestrator.sh` – wraps the launcher, starts collectors, summarises output.
-- `cdp-console.py`, `cdp-network.py`, `cdp-network-with-body.py` – CDP collectors (shared with orchestrator).
-- `cdp-dom-monitor.py` – live DOM/form-field watcher.
-- `cdp-summarize.py` – shared summary formatter.
+- `scripts/core/chrome-launcher.sh` – launches Chrome in headless/headed modes, returns JSON contract, enforces `--user-data-dir`.
+- `scripts/core/debug-orchestrator.sh` – wraps the launcher, starts collectors, summarises output.
+- `scripts/collectors/cdp-console.py`, `scripts/collectors/cdp-network.py`, `scripts/collectors/cdp-network-with-body.py` – CDP collectors (shared with orchestrator).
+- `scripts/collectors/cdp-dom-monitor.py` – live DOM/form-field watcher.
+- `scripts/collectors/cdp-summarize.py` – shared summary formatter.
+- `scripts/utilities/` – helper scripts for session management and cleanup.
 - `SKILL.md` – agent-facing skill guide with comprehensive workflow documentation.
 - `README.md`, `install.sh` – maintainer info and installer.
 
@@ -208,7 +217,7 @@ Test the skill manually after updating Chrome:
 
 ```bash
 # Test headed Chrome launch
-./debug-orchestrator.sh "https://example.com" --mode=headed --include-console
+./scripts/core/debug-orchestrator.sh "https://example.com" --mode=headed --include-console
 
 # Verify Chrome responds to CDP commands
 WS_URL=$(curl -s http://localhost:9222/json | jq -r '.[0].webSocketDebuggerUrl')

@@ -12,12 +12,12 @@
   // T027: Method 1 - Check common globals
   if (window.__REDUX_STORE__) {
     window.__EXPOSED_REDUX_STORE__ = window.__REDUX_STORE__;
-    console.log(' Redux store exposed at window.__EXPOSED_REDUX_STORE__ (found at window.__REDUX_STORE__)');
+    console.log(' Redux store exposed at window.__EXPOSED_REDUX_STORE__ (found at window.__REDUX_STORE__)');
     return;
   }
   if (window.store?.getState) {
     window.__EXPOSED_REDUX_STORE__ = window.store;
-    console.log(' Redux store exposed at window.__EXPOSED_REDUX_STORE__ (found at window.store)');
+    console.log(' Redux store exposed at window.__EXPOSED_REDUX_STORE__ (found at window.store)');
     return;
   }
 
@@ -44,14 +44,14 @@
       if (fiber.memoizedProps?.store?.getState) {
         // T032: Expose store and log success
         window.__EXPOSED_REDUX_STORE__ = fiber.memoizedProps.store;
-        console.log(` Redux store exposed at window.__EXPOSED_REDUX_STORE__ (found in Fiber tree at ${selector})`);
+        console.log(` Redux store exposed at window.__EXPOSED_REDUX_STORE__ (found in Fiber tree at ${selector})`);
         return;
       }
 
       // Check stateNode (class components)
       if (fiber.stateNode?.store?.getState) {
         window.__EXPOSED_REDUX_STORE__ = fiber.stateNode.store;
-        console.log(` Redux store exposed at window.__EXPOSED_REDUX_STORE__ (found in stateNode at ${selector})`);
+        console.log(` Redux store exposed at window.__EXPOSED_REDUX_STORE__ (found in stateNode at ${selector})`);
         return;
       }
 
@@ -61,7 +61,7 @@
 
   // T033: Graceful failure with fallback suggestion
   console.warn('L Could not find Redux store');
-  console.info('=¡ Fallback: Use parse-redux-logs.py to extract state from console logs');
+  console.info('= Fallback: Use parse-redux-logs.py to extract state from console logs');
 })();
 
 /*
@@ -69,7 +69,7 @@ T034: Minified version for CDP command usage
 
 For use with echo + websocat or direct CDP commands, copy the line below:
 
-(()=>{if(window.__REDUX_STORE__){window.__EXPOSED_REDUX_STORE__=window.__REDUX_STORE__;console.log(" Redux store exposed");return}if(window.store?.getState){window.__EXPOSED_REDUX_STORE__=window.store;console.log(" Redux store exposed");return}const s=["#app","#root","[data-reactroot]","body > div:first-child"];for(const e of s){const r=document.querySelector(e);if(!r)continue;const o=Object.keys(r).find(t=>t.startsWith("__reactFiber")||t.startsWith("__reactInternalInstance"));if(!o)continue;let t=r[o],n=0;while(t&&n++<50){if(t.memoizedProps?.store?.getState){window.__EXPOSED_REDUX_STORE__=t.memoizedProps.store;console.log(" Redux store exposed");return}if(t.stateNode?.store?.getState){window.__EXPOSED_REDUX_STORE__=t.stateNode.store;console.log(" Redux store exposed");return}t=t.return}}console.warn("L Could not find Redux store");console.info("=¡ Fallback: Use parse-redux-logs.py")})();
+(()=>{if(window.__REDUX_STORE__){window.__EXPOSED_REDUX_STORE__=window.__REDUX_STORE__;console.log(" Redux store exposed");return}if(window.store?.getState){window.__EXPOSED_REDUX_STORE__=window.store;console.log(" Redux store exposed");return}const s=["#app","#root","[data-reactroot]","body > div:first-child"];for(const e of s){const r=document.querySelector(e);if(!r)continue;const o=Object.keys(r).find(t=>t.startsWith("__reactFiber")||t.startsWith("__reactInternalInstance"));if(!o)continue;let t=r[o],n=0;while(t&&n++<50){if(t.memoizedProps?.store?.getState){window.__EXPOSED_REDUX_STORE__=t.memoizedProps.store;console.log(" Redux store exposed");return}if(t.stateNode?.store?.getState){window.__EXPOSED_REDUX_STORE__=t.stateNode.store;console.log(" Redux store exposed");return}t=t.return}}console.warn("L Could not find Redux store");console.info("= Fallback: Use parse-redux-logs.py")})();
 
 Usage example:
   echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"<PASTE_MINIFIED_LINE_HERE>","returnByValue":false}}' | websocat -n1 "$WS_URL"

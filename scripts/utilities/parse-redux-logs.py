@@ -124,7 +124,7 @@ def main():
         output_file = log_file.parent / f"{log_file.stem}-timeline.json"
 
     # T062: User-friendly output
-    print(f"= Parsing Redux logs from {log_file}")
+    print(f"= Parsing Redux logs from {log_file}")
 
     # T055: Parse logs
     timeline, warnings = parse_redux_logs(log_file)
@@ -148,16 +148,16 @@ def main():
         json.dump(output, f, indent=2)
 
     # T062: Final user output
-    print(f" Extracted {len(timeline)} Redux events")
+    print(f" Extracted {len(timeline)} Redux events")
 
     if warnings:
-        print(f"   {len(warnings)} warnings (see {output_file} for details)")
+        print(f"  {len(warnings)} warnings (see {output_file} for details)")
 
     # T063: Empty timeline suggestion
     if len(timeline) == 0:
-        print("=¡ No redux-logger output found. Ensure redux-logger is enabled in the app.")
+        print("= No redux-logger output found. Ensure redux-logger is enabled in the app.")
 
-    print(f"=Â Timeline saved to: {output_file}")
+    print(f"= Timeline saved to: {output_file}")
     print("")
 
 if __name__ == '__main__':
