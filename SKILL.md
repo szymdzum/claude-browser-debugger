@@ -50,7 +50,7 @@ chrome --user-data-dir="$PROFILE" --remote-debugging-port=9222 URL
 
 **Why:** Chrome 136+ security policy blocks CDP access to your default user profile to prevent cookie/credential theft.
 
-**For detailed Chrome 136 requirements, troubleshooting, and technical background, see [docs/guides/chrome-136-incident.md](docs/guides/chrome-136-incident.md)**
+**For detailed Chrome 136 requirements, troubleshooting, and technical background, see [docs/guides/headed-mode/chrome-136-incident.md](docs/guides/headed-mode/chrome-136-incident.md)**
 
 ## Quick Start
 
@@ -335,9 +335,9 @@ Complete reference documentation:
 
 
 ### Technical References
-- **[docs/guides/chrome-136-incident.md](docs/guides/chrome-136-incident.md)** - Chrome 136 security policy change, investigation, solution
-- **[docs/guides/launcher-contract.md](docs/guides/launcher-contract.md)** - chrome-launcher.sh API specification
-- **[docs/guides/interactive-workflow-design.md](docs/guides/interactive-workflow-design.md)** - Headed mode design rationale
+- **[docs/guides/headed-mode/chrome-136-incident.md](docs/guides/headed-mode/chrome-136-incident.md)** - Chrome 136 security policy change, investigation, solution
+- **[docs/guides/headed-mode/launcher-contract.md](docs/guides/headed-mode/launcher-contract.md)** - chrome-launcher.sh API specification
+- **[docs/guides/headed-mode/interactive-workflow-design.md](docs/guides/headed-mode/interactive-workflow-design.md)** - Headed mode design rationale
 - **[docs/reference/websocat-analysis.md](docs/reference/websocat-analysis.md)** - WebSocket/CDP internals and buffer tuning
 - **[docs/reference/cdp-commands.md](docs/reference/cdp-commands.md)** - Complete CDP command reference
 
