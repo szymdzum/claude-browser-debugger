@@ -7,8 +7,10 @@ Implements 'network record' command to capture network requests and responses.
 import argparse
 import asyncio
 import sys
+from pathlib import Path
 
 from ..session import CDPSession
+from ..collectors.network import NetworkCollector
 from ..exceptions import CDPError, CDPTargetNotFoundError
 
 
@@ -51,36 +53,54 @@ async def network_record_handler_async(args: argparse.Namespace) -> int:
         else:
             conn = await session.connect_to_first_page()
             async with conn:
-                # TODO: Create NetworkCollector when implemented in US4
-                # For now, just a placeholder
-                if not args.quiet:
-                    print(
-                        f"Network recording for {args.duration} seconds...",
-                        file=sys.stderr,
-                    )
-                    print(
-                        "Note: NetworkCollector not yet implemented (US4)",
-                        file=sys.stderr,
-                    )
+                # Create network collector
+                collector = NetworkCollector(
+                    connection=conn,
+                    output_path=Path(args.output) if hasattr(args, "output") and args.output else None,
+                    include_bodies=args.include_bodies if hasattr(args, "include_bodies") else False,
+                )
 
-                await asyncio.sleep(args.duration)
+                async with collector:
+                    if not args.quiet:
+                        print(
+                            f"Recording network activity for {args.duration} seconds...",
+                            file=sys.stderr,
+                        )
+
+                    await asyncio.sleep(args.duration)
+
+                if not args.quiet and collector.output_path:
+                    print(
+                        f"Network logs saved to: {collector.output_path}",
+                        file=sys.stderr,
+                    )
 
             return 0
 
         # Connect to target
         conn = await session.connect_to_target(target)
         async with conn:
-            # TODO: Create NetworkCollector when implemented in US4
-            if not args.quiet:
+            # Create network collector
+            collector = NetworkCollector(
+                connection=conn,
+                output_path=Path(args.output) if hasattr(args, "output") and args.output else None,
+                include_bodies=args.include_bodies if hasattr(args, "include_bodies") else False,
+            )
+
+            async with collector:
+                if not args.quiet:
+                    print(
+                        f"Recording network activity for {args.duration} seconds...",
+                        file=sys.stderr,
+                    )
+
+                await asyncio.sleep(args.duration)
+
+            if not args.quiet and collector.output_path:
                 print(
-                    f"Network recording for {args.duration} seconds...",
+                    f"Network logs saved to: {collector.output_path}",
                     file=sys.stderr,
                 )
-                print(
-                    "Note: NetworkCollector not yet implemented (US4)", file=sys.stderr
-                )
-
-            await asyncio.sleep(args.duration)
 
         return 0
 
