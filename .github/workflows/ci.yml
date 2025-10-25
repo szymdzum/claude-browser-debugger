@@ -73,4 +73,4 @@ jobs:
           pip install mypy
 
       - name: Type check
-        run: mypy scripts/cdp/ --ignore-missing-imports
+        run: mypy scripts/cdp/ --ignore-missing-imports --explicit-package-bases

@@ -9,7 +9,7 @@ import json
 import sys
 from pathlib import Path
 from collections import deque
-from typing import Optional, Callable, Awaitable, TextIO
+from typing import Optional, Callable, Awaitable, TextIO, Deque, Dict, Any
 
 from ..connection import CDPConnection
 from ..exceptions import CDPError
@@ -74,7 +74,7 @@ class ConsoleCollector:
         self.output_path = Path(output_path) if output_path else None
         self.level_filter = level_filter
 
-        self._buffer = deque(
+        self._buffer: Deque[Dict[str, Any]] = deque(
             maxlen=1000
         )  # Bounded buffer (FR-012: memory leak prevention)
         self._flush_task: Optional[asyncio.Task] = None

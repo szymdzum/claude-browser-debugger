@@ -9,7 +9,7 @@ Note: Named logging_setup.py to avoid conflicts with Python's built-in logging m
 import sys
 import json
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from datetime import datetime
 
 
@@ -113,6 +113,7 @@ def setup_logging(
         log_level = logging.INFO
 
     # Select formatter based on format type
+    formatter: Union[JSONFormatter, TextFormatter]
     if format_type == "json":
         formatter = JSONFormatter()
     else:

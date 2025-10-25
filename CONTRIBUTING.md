@@ -118,7 +118,7 @@ All pull requests must pass the following checks before merging:
 - Address all linting errors (warnings acceptable with justification)
 
 #### 3. **Type Checking** (mypy)
-- Code must pass type checking: `mypy scripts/cdp/ --ignore-missing-imports`
+- Code must pass type checking: `mypy scripts/cdp/ --ignore-missing-imports --explicit-package-bases`
 - Use type hints for new functions
 - Gradual typing acceptable for refactored code
 

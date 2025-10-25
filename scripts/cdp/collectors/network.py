@@ -9,7 +9,7 @@ import json
 import sys
 from pathlib import Path
 from collections import deque
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Deque
 
 from ..connection import CDPConnection
 from ..exceptions import CDPError
@@ -67,7 +67,7 @@ class NetworkCollector:
         self.include_bodies = include_bodies
         self.max_body_size = max_body_size
 
-        self._buffer = deque(maxlen=1000)  # Bounded buffer for memory leak prevention
+        self._buffer: Deque[Dict[str, Any]] = deque(maxlen=1000)  # Bounded buffer for memory leak prevention
         self._flush_task: Optional[asyncio.Task] = None
         self._running = False
         self._requests: Dict[str, Dict[str, Any]] = {}  # Track requests for matching
