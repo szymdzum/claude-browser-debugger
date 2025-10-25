@@ -60,9 +60,8 @@ async def console_stream_handler_async(args: argparse.Namespace) -> int:
                     level_filter=args.level if hasattr(args, "level") else None,
                 )
 
+                # Context manager handles start/stop automatically
                 async with collector:
-                    await collector.start()
-
                     # Stream for specified duration
                     if not args.quiet:
                         print(
@@ -71,8 +70,6 @@ async def console_stream_handler_async(args: argparse.Namespace) -> int:
                         )
 
                     await asyncio.sleep(args.duration)
-
-                    await collector.stop()
 
                 if not args.quiet and collector.output_path:
                     print(
@@ -92,9 +89,8 @@ async def console_stream_handler_async(args: argparse.Namespace) -> int:
                 level_filter=args.level if hasattr(args, "level") else None,
             )
 
+            # Context manager handles start/stop automatically
             async with collector:
-                await collector.start()
-
                 # Stream for specified duration
                 if not args.quiet:
                     print(
@@ -104,8 +100,6 @@ async def console_stream_handler_async(args: argparse.Namespace) -> int:
 
                 await asyncio.sleep(args.duration)
 
-                await collector.stop()
-
             if not args.quiet and collector.output_path:
                 print(
                     f"Console logs saved to: {collector.output_path}", file=sys.stderr
@@ -114,7 +108,7 @@ async def console_stream_handler_async(args: argparse.Namespace) -> int:
         return 0
 
     except CDPError as e:
-        if args.log_level == "debug":
+        if hasattr(args, 'config') and args.config.log_level.upper() == "DEBUG":
             raise
         print(f"Error: {e}", file=sys.stderr)
         if e.details.get("recovery"):

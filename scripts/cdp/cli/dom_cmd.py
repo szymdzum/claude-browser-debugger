@@ -5,6 +5,7 @@ Implements 'dom dump' command to extract HTML via Runtime.evaluate.
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -54,11 +55,13 @@ async def dom_dump_handler_async(args: argparse.Namespace) -> int:
             async with conn:
                 # Wait for selector if specified
                 if args.wait_for:
+                    # Escape selector for safe JavaScript embedding
+                    escaped_selector = json.dumps(args.wait_for)
                     wait_expr = f"""
                     new Promise((resolve, reject) => {{
-                        const timeout = setTimeout(() => reject(new Error('Selector not found: {args.wait_for}')), {args.timeout * 1000});
+                        const timeout = setTimeout(() => reject(new Error('Selector not found: ' + {escaped_selector})), {args.timeout * 1000});
                         const interval = setInterval(() => {{
-                            if (document.querySelector('{args.wait_for}')) {{
+                            if (document.querySelector({escaped_selector})) {{
                                 clearInterval(interval);
                                 clearTimeout(timeout);
                                 resolve(true);
@@ -96,11 +99,13 @@ async def dom_dump_handler_async(args: argparse.Namespace) -> int:
         async with conn:
             # Wait for selector if specified
             if args.wait_for:
+                # Escape selector for safe JavaScript embedding
+                escaped_selector = json.dumps(args.wait_for)
                 wait_expr = f"""
                 new Promise((resolve, reject) => {{
-                    const timeout = setTimeout(() => reject(new Error('Selector not found: {args.wait_for}')), {args.timeout * 1000});
+                    const timeout = setTimeout(() => reject(new Error('Selector not found: ' + {escaped_selector})), {args.timeout * 1000});
                     const interval = setInterval(() => {{
-                        if (document.querySelector('{args.wait_for}')) {{
+                        if (document.querySelector({escaped_selector})) {{
                             clearInterval(interval);
                             clearTimeout(timeout);
                             resolve(true);
@@ -134,7 +139,7 @@ async def dom_dump_handler_async(args: argparse.Namespace) -> int:
         return 0
 
     except CDPError as e:
-        if args.log_level == "debug":
+        if hasattr(args, 'config') and args.config.log_level.upper() == "DEBUG":
             raise
         print(f"Error: {e}", file=sys.stderr)
         if e.details.get("recovery"):

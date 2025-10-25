@@ -58,7 +58,7 @@ def session_list_handler(args: argparse.Namespace) -> int:
         return 0
 
     except CDPError as e:
-        if args.log_level == "debug":
+        if hasattr(args, 'config') and args.config.log_level.upper() == "DEBUG":
             raise
         print(f"Error: {e}", file=sys.stderr)
         if e.details.get("recovery"):

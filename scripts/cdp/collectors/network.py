@@ -6,6 +6,7 @@ Implements User Story 4: Core Command Implementation - Network Monitoring
 
 import asyncio
 import json
+import sys
 from pathlib import Path
 from collections import deque
 from typing import Optional, Dict, Any
@@ -22,18 +23,25 @@ class NetworkCollector:
     to prevent memory leaks during long sessions. Implements periodic flush every 30s.
 
     Usage:
+        # Write to file
         async with CDPConnection(ws_url) as conn:
             output_file = Path("/tmp/network-logs.jsonl")
             async with NetworkCollector(conn, output_file) as collector:
                 await asyncio.sleep(60)  # Monitor for 60 seconds
             # Collector automatically stopped, data flushed
 
+        # Stream to stdout (default)
+        async with CDPConnection(ws_url) as conn:
+            async with NetworkCollector(conn) as collector:
+                await asyncio.sleep(60)  # Monitor for 60 seconds
+            # Network events streamed to stdout in real-time
+
     Attributes:
         connection: Active CDP connection
-        output_path: Output file path for captured data (JSONL format)
+        output_path: Output file path for captured data (None = stream to stdout)
         include_bodies: Whether to capture response bodies
-        _buffer: Bounded in-memory buffer (max 1000 entries)
-        _flush_task: Background task for periodic flush
+        _buffer: Bounded in-memory buffer (max 1000 entries, only used for file output)
+        _flush_task: Background task for periodic flush (file mode only)
         _running: Flag indicating if collector is active
         _requests: Dict mapping requestId to request data
     """
@@ -50,7 +58,7 @@ class NetworkCollector:
 
         Args:
             connection: Active CDPConnection instance
-            output_path: Output file path for JSONL logs (None = no disk writes)
+            output_path: Output file path for JSONL logs (None = stream to stdout)
             include_bodies: Whether to capture response bodies
             max_body_size: Maximum response body size to capture (bytes)
         """
@@ -182,8 +190,13 @@ class NetworkCollector:
                 # Body not available (e.g., redirect, cached, etc.)
                 pass
 
-        # Append to buffer
-        self._buffer.append(entry)
+        # Stream to stdout if no output path specified, otherwise buffer for file
+        if self.output_path is None:
+            # Real-time stdout streaming
+            print(json.dumps(entry), file=sys.stdout, flush=True)
+        else:
+            # Append to buffer
+            self._buffer.append(entry)
 
     async def _on_loading_finished(self, params: dict):
         """
@@ -222,7 +235,12 @@ class NetworkCollector:
             "timestamp": params.get("timestamp", 0),
         }
 
-        self._buffer.append(entry)
+        # Stream to stdout if no output path specified, otherwise buffer for file
+        if self.output_path is None:
+            # Real-time stdout streaming
+            print(json.dumps(entry), file=sys.stdout, flush=True)
+        else:
+            self._buffer.append(entry)
 
         # Cleanup
         if request_id is not None:

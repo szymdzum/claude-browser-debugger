@@ -18,14 +18,11 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # Default values (match debug-orchestrator.sh defaults)
 URL=""
 DURATION="15"
-OUTPUT_FILE="/tmp/debug-output.log"
-SUMMARY_FORMAT="none"
+OUTPUT_DIR=""
+SUMMARY_FORMAT="text"
 INCLUDE_CONSOLE="false"
-CONSOLE_LOG=""
-IDLE_SECONDS="5"
 MODE="headless"
 PORT="9222"
-PROFILE=""
 
 # Parse positional arguments
 if [ $# -ge 1 ]; then
@@ -39,12 +36,16 @@ if [ $# -ge 1 ] && [[ ! "$1" =~ ^-- ]]; then
 fi
 
 if [ $# -ge 1 ] && [[ ! "$1" =~ ^-- ]]; then
-    OUTPUT_FILE="$1"
-    shift
+    # Legacy positional arg for output file - reject with clear error
+    echo "Error: Python CLI does not support positional output file argument" >&2
+    echo "Legacy: ./script.sh URL DURATION /path/to/output.log" >&2
+    echo "Python:  Use --output-dir /path/to/dir instead" >&2
+    echo "Note: Python CLI generates timestamped files (YYYYMMDD-HHMMSS-PID-*)" >&2
+    exit 1
 fi
 
 # Parse named flags
-while [ $# -gt 0 ]; then
+while [ $# -gt 0 ]; do
     case "$1" in
         --summary=*)
             SUMMARY_FORMAT="${1#--summary=}"
@@ -52,23 +53,18 @@ while [ $# -gt 0 ]; then
         --include-console)
             INCLUDE_CONSOLE="true"
             ;;
-        --console-log=*)
-            CONSOLE_LOG="${1#--console-log=}"
-            ;;
-        --idle=*)
-            IDLE_SECONDS="${1#--idle=}"
-            ;;
         --mode=*)
             MODE="${1#--mode=}"
             ;;
         --port=*)
             PORT="${1#--port=}"
             ;;
-        --profile=*)
-            PROFILE="${1#--profile=}"
+        --output-dir=*)
+            OUTPUT_DIR="${1#--output-dir=}"
             ;;
-        --filter=*)
-            # Filter flag not yet implemented in Python CLI (ignore for now)
+        # Legacy/unsupported flags (ignore with warning)
+        --console-log=*|--idle=*|--profile=*|--filter=*)
+            echo "Warning: Flag $1 not supported in Python CLI (ignoring)" >&2
             ;;
         *)
             echo "Warning: Unknown flag $1 (ignoring)" >&2
@@ -91,26 +87,21 @@ PYTHON_CMD=(
     "$MODE"
     "$URL"
     --duration "$DURATION"
-    --output "$OUTPUT_FILE"
-    --idle "$IDLE_SECONDS"
     --chrome-port "$PORT"
 )
+
+# Add summary flag only if not "none" (legacy compatibility)
+if [ "$SUMMARY_FORMAT" != "none" ]; then
+    PYTHON_CMD+=(--summary "$SUMMARY_FORMAT")
+fi
 
 # Add optional flags
 if [ "$INCLUDE_CONSOLE" = "true" ]; then
     PYTHON_CMD+=(--include-console)
 fi
 
-if [ -n "$CONSOLE_LOG" ]; then
-    PYTHON_CMD+=(--console-log "$CONSOLE_LOG")
-fi
-
-if [ "$SUMMARY_FORMAT" != "none" ]; then
-    PYTHON_CMD+=(--summary "$SUMMARY_FORMAT")
-fi
-
-if [ -n "$PROFILE" ] && [ "$PROFILE" != "none" ]; then
-    PYTHON_CMD+=(--profile "$PROFILE")
+if [ -n "$OUTPUT_DIR" ]; then
+    PYTHON_CMD+=(--output-dir "$OUTPUT_DIR")
 fi
 
 # Execute Python CLI from repository root

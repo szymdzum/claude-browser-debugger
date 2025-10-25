@@ -6,9 +6,10 @@ Implements User Story 2: Ergonomic Collector Refactoring
 
 import asyncio
 import json
+import sys
 from pathlib import Path
 from collections import deque
-from typing import Optional, Callable, Awaitable
+from typing import Optional, Callable, Awaitable, TextIO
 
 from ..connection import CDPConnection
 from ..exceptions import CDPError
@@ -22,24 +23,32 @@ class ConsoleCollector:
     to prevent memory leaks during long sessions. Implements periodic flush every 30s.
 
     Usage:
+        # Write to file
         async with CDPConnection(ws_url) as conn:
             output_file = Path("/tmp/console-logs.jsonl")
             async with ConsoleCollector(conn, output_file, level_filter="warn") as collector:
                 await asyncio.sleep(10)  # Monitor for 10 seconds
             # Collector automatically stopped, data flushed
 
+        # Stream to stdout (default)
+        async with CDPConnection(ws_url) as conn:
+            async with ConsoleCollector(conn) as collector:
+                await asyncio.sleep(10)  # Monitor for 10 seconds
+            # Messages streamed to stdout in real-time
+
     Attributes:
         connection: Active CDP connection
-        output_path: Output file path for captured data (JSONL format)
+        output_path: Output file path for captured data (None = stream to stdout)
         level_filter: Minimum log level to capture ("log", "info", "warn", "error")
-        _buffer: Bounded in-memory buffer (max 1000 entries)
-        _flush_task: Background task for periodic flush
+        _buffer: Bounded in-memory buffer (max 1000 entries, only used for file output)
+        _flush_task: Background task for periodic flush (file mode only)
         _running: Flag indicating if collector is active
     """
 
     # Log level hierarchy (ascending severity)
     LOG_LEVELS = {
         "verbose": 0,
+        "debug": 0,    # Same as verbose
         "log": 1,
         "info": 2,
         "warn": 3,
@@ -58,7 +67,7 @@ class ConsoleCollector:
 
         Args:
             connection: Active CDPConnection instance
-            output_path: Output file path for JSONL logs (None = no disk writes)
+            output_path: Output file path for JSONL logs (None = stream to stdout)
             level_filter: Minimum log level to capture (None = capture all)
         """
         self.connection = connection
@@ -118,8 +127,8 @@ class ConsoleCollector:
         """
         Event handler for Console.messageAdded.
 
-        Applies level filtering and appends to bounded buffer. Non-blocking to avoid
-        stalling CDP receive loop (see Principle 3: Token Efficiency).
+        Applies level filtering and either streams to stdout or appends to buffer.
+        Non-blocking to avoid stalling CDP receive loop (see Principle 3: Token Efficiency).
 
         Args:
             params: CDP event parameters containing message object
@@ -130,14 +139,21 @@ class ConsoleCollector:
         if self.level_filter and not self._should_capture(message.get("level", "log")):
             return
 
-        # Append to bounded buffer (oldest entries automatically dropped if full)
-        self._buffer.append({
+        entry = {
             "timestamp": message.get("timestamp", 0),
             "level": message.get("level", "log"),
             "text": message.get("text", ""),
             "url": message.get("url", ""),
             "line": message.get("lineNumber", 0),
-        })
+        }
+
+        # Stream to stdout if no output path specified, otherwise buffer for file
+        if self.output_path is None:
+            # Real-time stdout streaming
+            print(json.dumps(entry), file=sys.stdout, flush=True)
+        else:
+            # Append to bounded buffer (oldest entries automatically dropped if full)
+            self._buffer.append(entry)
 
     def _should_capture(self, level: str) -> bool:
         """

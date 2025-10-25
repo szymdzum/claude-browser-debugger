@@ -60,7 +60,7 @@ async def test_console_collector_lifecycle():
 
 
 @pytest.mark.asyncio
-async def test_console_collector_message_capture():
+async def test_console_collector_message_capture(tmp_path):
     """
     T028 (partial): Test message capture and buffering.
 
@@ -73,7 +73,9 @@ async def test_console_collector_message_capture():
     mock_conn.execute_command = AsyncMock()
     mock_conn.subscribe = MagicMock()
 
-    collector = ConsoleCollector(mock_conn)
+    # Use output_path to enable buffering mode (vs stdout streaming)
+    output_file = tmp_path / "console.jsonl"
+    collector = ConsoleCollector(mock_conn, output_path=output_file)
     await collector.start()
 
     # Simulate console message events
@@ -112,7 +114,7 @@ async def test_console_collector_message_capture():
 
 
 @pytest.mark.asyncio
-async def test_console_collector_level_filter():
+async def test_console_collector_level_filter(tmp_path):
     """
     T028 (partial): Test level filtering functionality.
 
@@ -124,8 +126,9 @@ async def test_console_collector_level_filter():
     mock_conn.execute_command = AsyncMock()
     mock_conn.subscribe = MagicMock()
 
-    # Create collector with warn level filter
-    collector = ConsoleCollector(mock_conn, level_filter="warn")
+    # Create collector with warn level filter and output file for buffering
+    output_file = tmp_path / "console.jsonl"
+    collector = ConsoleCollector(mock_conn, output_path=output_file, level_filter="warn")
     await collector.start()
 
     # Simulate log message (should be filtered out)
@@ -181,7 +184,7 @@ async def test_console_collector_level_filter():
 
 
 @pytest.mark.asyncio
-async def test_console_collector_bounded_buffer():
+async def test_console_collector_bounded_buffer(tmp_path):
     """
     T028 (partial): Test bounded buffer prevents memory leaks.
 
@@ -193,7 +196,9 @@ async def test_console_collector_bounded_buffer():
     mock_conn.execute_command = AsyncMock()
     mock_conn.subscribe = MagicMock()
 
-    collector = ConsoleCollector(mock_conn)
+    # Use output file to enable buffering mode
+    output_file = tmp_path / "console.jsonl"
+    collector = ConsoleCollector(mock_conn, output_path=output_file)
     await collector.start()
 
     # Add 1500 messages (exceeds buffer limit)

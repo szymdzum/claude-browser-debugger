@@ -176,7 +176,7 @@ async def orchestrate_handler_async(args: argparse.Namespace) -> int:
         return 0
 
     except CDPError as e:
-        if args.log_level == "debug":
+        if hasattr(args, 'config') and args.config.log_level.upper() == "DEBUG":
             raise
         print(f"Error: {e}", file=sys.stderr)
         if e.details.get("recovery"):
@@ -184,7 +184,7 @@ async def orchestrate_handler_async(args: argparse.Namespace) -> int:
         return 1
 
     except Exception as e:
-        if args.log_level == "debug":
+        if hasattr(args, 'config') and args.config.log_level.upper() == "DEBUG":
             raise
         print(f"Unexpected error: {e}", file=sys.stderr)
         return 1
