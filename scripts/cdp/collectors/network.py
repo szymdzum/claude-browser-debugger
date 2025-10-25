@@ -9,10 +9,34 @@ import json
 import sys
 from pathlib import Path
 from collections import deque
-from typing import Optional, Dict, Any, Deque
+from typing import Optional, Dict, Deque, TypedDict, NotRequired
 
 from ..connection import CDPConnection
 from ..exceptions import CDPError
+
+
+class RequestData(TypedDict):
+    """Structure of stored request data for matching with responses."""
+    requestId: str
+    url: str
+    method: str
+    timestamp: float
+    type: str
+
+
+class NetworkEntry(TypedDict):
+    """Structure of a network event entry."""
+    requestId: Optional[str]
+    url: str
+    method: str
+    status: int
+    statusText: str
+    timestamp: float
+    mimeType: NotRequired[str]  # Optional: not present in failed requests
+    type: NotRequired[str]  # Optional: not present in failed requests
+    body: NotRequired[str]  # Optional: only present if include_bodies=True
+    base64Encoded: NotRequired[bool]  # Optional: only present with body
+    errorText: NotRequired[str]  # Optional: only present in failed requests
 
 
 class NetworkCollector:
@@ -67,10 +91,10 @@ class NetworkCollector:
         self.include_bodies = include_bodies
         self.max_body_size = max_body_size
 
-        self._buffer: Deque[Dict[str, Any]] = deque(maxlen=1000)  # Bounded buffer for memory leak prevention
+        self._buffer: Deque[NetworkEntry] = deque(maxlen=1000)  # Bounded buffer for memory leak prevention
         self._flush_task: Optional[asyncio.Task] = None
         self._running = False
-        self._requests: Dict[str, Dict[str, Any]] = {}  # Track requests for matching
+        self._requests: Dict[str, RequestData] = {}  # Track requests for matching
 
     async def start(self):
         """
@@ -159,21 +183,24 @@ class NetworkCollector:
         request_id = params.get("requestId")
         response = params.get("response", {})
 
-        # Get matching request
-        request_data = (
-            self._requests.get(request_id, {}) if request_id is not None else {}
+        # Get matching request (use default if not found)
+        default_request: RequestData = {
+            "requestId": "", "url": "", "method": "GET", "timestamp": 0.0, "type": ""
+        }
+        request_data: RequestData = (
+            self._requests.get(request_id, default_request) if request_id is not None else default_request
         )
 
         # Build entry
-        entry = {
+        entry: NetworkEntry = {
             "requestId": request_id,
-            "url": response.get("url", request_data.get("url", "")),
-            "method": request_data.get("method", "GET"),
-            "status": response.get("status", 0),
-            "statusText": response.get("statusText", ""),
-            "mimeType": response.get("mimeType", ""),
-            "timestamp": response.get("timing", {}).get("receiveHeadersEnd", 0),
-            "type": params.get("type", request_data.get("type", "")),
+            "url": str(response.get("url", request_data.get("url", ""))),
+            "method": str(request_data.get("method", "GET")),
+            "status": int(response.get("status", 0)),
+            "statusText": str(response.get("statusText", "")),
+            "mimeType": str(response.get("mimeType", "")),
+            "timestamp": float(response.get("timing", {}).get("receiveHeadersEnd", 0)),
+            "type": str(params.get("type", request_data.get("type", ""))),
         }
 
         # Capture response body if requested
@@ -225,19 +252,22 @@ class NetworkCollector:
             params: CDP event parameters
         """
         request_id = params.get("requestId")
-        request_data = (
-            self._requests.get(request_id, {}) if request_id is not None else {}
+        default_request: RequestData = {
+            "requestId": "", "url": "", "method": "GET", "timestamp": 0.0, "type": ""
+        }
+        request_data: RequestData = (
+            self._requests.get(request_id, default_request) if request_id is not None else default_request
         )
 
         # Log failure
-        entry = {
+        entry: NetworkEntry = {
             "requestId": request_id,
-            "url": request_data.get("url", ""),
-            "method": request_data.get("method", "GET"),
+            "url": str(request_data.get("url", "")),
+            "method": str(request_data.get("method", "GET")),
             "status": 0,
             "statusText": "FAILED",
-            "errorText": params.get("errorText", ""),
-            "timestamp": params.get("timestamp", 0),
+            "errorText": str(params.get("errorText", "")),
+            "timestamp": float(params.get("timestamp", 0)),
         }
 
         # Stream to stdout if no output path specified, otherwise buffer for file

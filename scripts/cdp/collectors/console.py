@@ -9,10 +9,19 @@ import json
 import sys
 from pathlib import Path
 from collections import deque
-from typing import Optional, Callable, Awaitable, TextIO, Deque, Dict, Any
+from typing import Optional, Callable, Awaitable, TextIO, Deque, TypedDict
 
 from ..connection import CDPConnection
 from ..exceptions import CDPError
+
+
+class ConsoleEntry(TypedDict):
+    """Structure of a console log entry."""
+    timestamp: float
+    level: str
+    text: str
+    url: str
+    line: int
 
 
 class ConsoleCollector:
@@ -74,7 +83,7 @@ class ConsoleCollector:
         self.output_path = Path(output_path) if output_path else None
         self.level_filter = level_filter
 
-        self._buffer: Deque[Dict[str, Any]] = deque(
+        self._buffer: Deque[ConsoleEntry] = deque(
             maxlen=1000
         )  # Bounded buffer (FR-012: memory leak prevention)
         self._flush_task: Optional[asyncio.Task] = None
@@ -141,12 +150,12 @@ class ConsoleCollector:
         if self.level_filter and not self._should_capture(message.get("level", "log")):
             return
 
-        entry = {
-            "timestamp": message.get("timestamp", 0),
-            "level": message.get("level", "log"),
-            "text": message.get("text", ""),
-            "url": message.get("url", ""),
-            "line": message.get("lineNumber", 0),
+        entry: ConsoleEntry = {
+            "timestamp": float(message.get("timestamp", 0)),
+            "level": str(message.get("level", "log")),
+            "text": str(message.get("text", "")),
+            "url": str(message.get("url", "")),
+            "line": int(message.get("lineNumber", 0)),
         }
 
         # Stream to stdout if no output path specified, otherwise buffer for file
