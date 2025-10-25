@@ -195,7 +195,8 @@ class NetworkCollector:
         """
         request_id = params.get("requestId")
         # Remove from tracking dict to free memory
-        self._requests.pop(request_id, None)
+        if request_id is not None:
+            self._requests.pop(request_id, None)
 
     async def _on_loading_failed(self, params: dict):
         """
@@ -223,7 +224,8 @@ class NetworkCollector:
         self._buffer.append(entry)
 
         # Cleanup
-        self._requests.pop(request_id, None)
+        if request_id is not None:
+            self._requests.pop(request_id, None)
 
     def _should_capture_body(self, response: dict) -> bool:
         """
