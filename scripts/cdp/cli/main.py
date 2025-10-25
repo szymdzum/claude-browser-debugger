@@ -19,6 +19,8 @@ Subcommands:
 import argparse
 import sys
 from typing import List, Optional
+from scripts.cdp.config import Configuration
+from scripts.cdp.logging_setup import setup_logging
 
 
 def create_parent_parser() -> argparse.ArgumentParser:
@@ -165,6 +167,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     """
     Main entry point for CLI.
 
+    Implements T093: Integrate Configuration and logging setup.
+    Precedence: CLI flags > env vars > config file > defaults (R7 from research.md)
+
     Args:
         argv: Command-line arguments (default: sys.argv[1:])
 
@@ -178,13 +183,36 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Parse arguments
     args = parser.parse_args(argv)
 
-    # Handle verbosity flags
-    if args.quiet:
-        # Set log level to warning or higher
-        args.log_level = "warning"
-    elif args.verbose:
-        # Set log level to debug
-        args.log_level = "debug"
+    # Load configuration with precedence: CLI > env > file > defaults
+    config = Configuration()
+    config.load_from_file("~/.cdprc")  # Load from config file if exists
+    config.load_from_env()  # Override with environment variables
+
+    # Merge CLI arguments (highest precedence)
+    cli_overrides = {
+        "chrome_port": args.chrome_port if hasattr(args, "chrome_port") else None,
+        "timeout": args.timeout if hasattr(args, "timeout") else None,
+        "log_level": args.log_level if hasattr(args, "log_level") else None,
+        "log_format": args.format if hasattr(args, "format") else None,
+    }
+    config.merge(**{k: v for k, v in cli_overrides.items() if v is not None})
+
+    # Handle verbosity flags (override log level)
+    if hasattr(args, "quiet") and args.quiet:
+        config.log_level = "ERROR"
+    elif hasattr(args, "verbose") and args.verbose:
+        config.log_level = "DEBUG"
+
+    # Setup logging with final configuration
+    setup_logging(
+        format_type=config.log_format,
+        level=config.log_level.upper() if isinstance(config.log_level, str) else "INFO",
+        quiet=getattr(args, "quiet", False),
+        verbose=getattr(args, "verbose", False)
+    )
+
+    # Attach config to args for subcommands to access
+    args.config = config
 
     # Dispatch to subcommand handler (will be set via set_defaults(func=...) in subcommands)
     if hasattr(args, "func"):
@@ -194,7 +222,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("\nInterrupted by user", file=sys.stderr)
             return 130  # Standard exit code for SIGINT
         except Exception as e:
-            if args.log_level == "debug":
+            if config.log_level.upper() == "DEBUG":
                 raise  # Re-raise for full traceback in debug mode
             print(f"Error: {e}", file=sys.stderr)
             return 1

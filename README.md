@@ -187,6 +187,37 @@ This produces network timelines, console output, and both JSON and human-readabl
 
 ## Installation
 
+### Python CLI (Recommended)
+
+The unified Python CLI provides a modern interface with better error handling and structured output:
+
+```bash
+# Install in development mode (from repository root)
+pip install -e .
+
+# Or production install (once published to PyPI)
+pip install browser-debugger
+```
+
+**Quick Start**:
+```bash
+# List Chrome targets
+cdp session list
+
+# Execute JavaScript
+cdp eval --url example.com "document.title"
+
+# Extract DOM
+cdp dom dump --url example.com --output dom.html
+
+# Full workflow automation
+cdp orchestrate headless https://example.com --include-console
+```
+
+See `docs/examples/` for comprehensive usage examples.
+
+### Claude Code Skill (Legacy Bash Interface)
+
 ```bash
 # Recommended: symlink install (updates follow git pulls automatically)
 ./install.sh --symlink
@@ -196,7 +227,7 @@ This produces network timelines, console output, and both JSON and human-readabl
 ```
 
 **Prerequisites**
-- Python 3.7+ with `websockets`: `pip3 install websockets --break-system-packages`
+- Python 3.10+ with `websockets`: `pip install websockets`
 - Chrome or Chromium (headless or headed mode)
 - `jq` for JSON parsing: `brew install jq` (macOS) or `apt-get install jq` (Linux)
 

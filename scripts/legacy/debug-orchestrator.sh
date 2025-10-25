@@ -11,6 +11,24 @@
 #   ./debug-orchestrator.sh "https://api.example/data" 15 /tmp/out.log --filter=marketing --include-console
 #   ./debug-orchestrator.sh "http://localhost:3000/signin" --mode=headed --include-console
 
+# ============================================================================
+# DEPRECATION NOTICE (T104 - User Story 8)
+# ============================================================================
+# This Bash orchestrator is DEPRECATED and will be removed in a future release.
+# Please migrate to the Python CDP CLI for better reliability and features:
+#
+#   python3 -m scripts.cdp.cli.main orchestrate <URL> [OPTIONS]
+#
+# Migration examples:
+#   Old: ./debug-orchestrator.sh "https://example.com" --summary=both
+#   New: python3 -m scripts.cdp.cli.main orchestrate "https://example.com" --summary both
+#
+#   Old: ./debug-orchestrator.sh "http://localhost:3000" --mode=headed --include-console
+#   New: python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000" --mode headed --console
+#
+# See docs/guides/bash-to-python-migration.md for full migration guide.
+# ============================================================================
+
 set -e
 
 # ============================================================================
@@ -186,6 +204,19 @@ display_ready_notification() {
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
 }
+
+# ============================================================================
+# T104: Print deprecation warning to stderr
+# ============================================================================
+cat >&2 <<'EOF'
+⚠️  DEPRECATION WARNING ⚠️
+This Bash orchestrator is deprecated. Please migrate to the Python CDP CLI:
+
+  python3 -m scripts.cdp.cli.main orchestrate <URL> [OPTIONS]
+
+See docs/guides/bash-to-python-migration.md for migration guide.
+EOF
+echo "" >&2
 
 # Parse arguments
 if [ -z "$1" ]; then
