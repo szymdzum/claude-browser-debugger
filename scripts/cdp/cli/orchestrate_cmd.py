@@ -7,6 +7,7 @@ Implements 'orchestrate' command to run full headless/headed debugging sessions.
 import argparse
 import asyncio
 import sys
+import os
 import subprocess
 import json
 import time
@@ -40,7 +41,7 @@ async def orchestrate_handler_async(args: argparse.Namespace) -> int:
 
         # Timestamp for unique filenames
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        session_id = f"{timestamp}-{subprocess.os.getpid()}"
+        session_id = f"{timestamp}-{os.getpid()}"
 
         if not args.quiet:
             print(
