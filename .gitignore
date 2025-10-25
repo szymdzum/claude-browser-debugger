@@ -9,6 +9,21 @@ __pycache__/
 .Python
 .mypy_cache/
 .ruff_cache/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.venv/
+venv/
+ENV/
+env/
 
 # Logs
 *.log
@@ -23,6 +38,9 @@ __pycache__/
 # Test outputs
 /tmp/
 *.tmp
+
+# Dual-path validation history (T072 - User Story 5)
+.dual-path-history.json
 
 # Spec-kit (development-only infrastructure)
 .claude/

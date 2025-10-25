@@ -424,7 +424,7 @@ python3 check-form-state.py <page_id> 9222
 - **Smoke Test:** `tests/smoke-test-headed.sh`
 - **Diagnostics:** `scripts/diagnostics/debug-cdp-connection.py`
 - **Launcher:** `chrome-launcher.sh`
-- **Orchestrator:** `debug-orchestrator.sh`
+- **Orchestrator:** Python CDP CLI (`cdp orchestrate`)
 
 ---
 

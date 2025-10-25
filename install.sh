@@ -104,7 +104,7 @@ else
     done
 
     # Copy core scripts
-    for file in chrome-launcher.sh debug-orchestrator.sh; do
+    for file in chrome-launcher.sh; do
         if [ -f "$SCRIPT_DIR/scripts/core/$file" ]; then
             cp "$SCRIPT_DIR/scripts/core/$file" "$TARGET_DIR/scripts/core/"
             chmod +x "$TARGET_DIR/scripts/core/$file"
@@ -114,16 +114,13 @@ else
         fi
     done
 
-    # Copy collector scripts
-    for file in cdp-console.py cdp-network.py cdp-network-with-body.py cdp-dom-monitor.py cdp-summarize.py; do
-        if [ -f "$SCRIPT_DIR/scripts/collectors/$file" ]; then
-            cp "$SCRIPT_DIR/scripts/collectors/$file" "$TARGET_DIR/scripts/collectors/"
-            chmod +x "$TARGET_DIR/scripts/collectors/$file"
-            echo "  ✓ scripts/collectors/$file"
-        else
-            echo "  ⚠️  scripts/collectors/$file not found (skipping)"
-        fi
-    done
+    # Copy Python CDP package (recursive)
+    if [ -d "$SCRIPT_DIR/scripts/cdp" ]; then
+        cp -r "$SCRIPT_DIR/scripts/cdp" "$TARGET_DIR/scripts/"
+        echo "  ✓ scripts/cdp/ (Python CDP package)"
+    else
+        echo "  ⚠️  scripts/cdp/ not found (skipping)"
+    fi
 
     # Copy utility scripts (shell scripts)
     for file in cdp-query.sh cleanup-chrome.sh save-session.sh resume-session.sh extract-state.sh; do

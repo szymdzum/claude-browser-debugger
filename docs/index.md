@@ -39,9 +39,9 @@
 ## Scripts
 
 See [../scripts/README.md](../scripts/README.md) for script documentation:
-- **Core**: chrome-launcher.sh, debug-orchestrator.sh
-- **Collectors**: cdp-console.py, cdp-network.py, cdp-dom-monitor.py
-- **Utilities**: cdp-query.sh, cleanup-chrome.sh, save-session.sh
+- **Python CDP CLI**: orchestrate, console, network, dom, session, eval, query subcommands
+- **Core**: chrome-launcher.sh (Chrome process management)
+- **Utilities**: cdp-query.sh, cleanup-chrome.sh, save-session.sh, extract-state.sh
 
 ## Quick Lookups
 
@@ -49,7 +49,7 @@ See [../scripts/README.md](../scripts/README.md) for script documentation:
 
 | Task | Document |
 |------|----------|
-| Launch Chrome in headed mode | [guides/workflow-guide.md](guides/workflow-guide.md) |
+| Launch Chrome in headed mode | [guides/workflows.md](guides/workflows.md) |
 | Extract DOM from live page | [reference/cdp-commands.md](reference/cdp-commands.md) → Runtime.evaluate |
 | Capture network request bodies | [guides/filter-flag-guide.md](guides/filter-flag-guide.md) |
 | Fix "CDP connection blocked" | [guides/chrome-136-incident.md](guides/chrome-136-incident.md) |
@@ -63,9 +63,9 @@ See [../scripts/README.md](../scripts/README.md) for script documentation:
 | Component | Primary Docs |
 |-----------|--------------|
 | chrome-launcher.sh | [guides/launcher-contract.md](guides/launcher-contract.md) |
-| debug-orchestrator.sh | [guides/workflows.md](guides/workflows.md) |
-| cdp-console.py | [../scripts/README.md](../scripts/README.md) |
-| cdp-network.py | [guides/filter-flag-guide.md](guides/filter-flag-guide.md) |
+| Python CDP CLI (orchestrate) | [guides/workflows.md](guides/workflows.md) |
+| Python CDP CLI (console) | [../scripts/README.md](../scripts/README.md) |
+| Python CDP CLI (network) | [../scripts/README.md](../scripts/README.md) |
 | websocat | [reference/websocat-analysis.md](reference/websocat-analysis.md) |
 
 ## Token-Efficient Reading Strategy

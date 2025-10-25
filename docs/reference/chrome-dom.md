@@ -54,7 +54,7 @@ Launch localhost:3000/contact-form in headed mode with browser-debugger. I want 
 Use browser-debugger to monitor network activity on localhost:3000/dashboard. Launch in headless mode, wait 10 seconds for initial API calls to complete, then show me all network requests with response bodies.
 ```
 
-**Expected workflow:** Launch with `cdp-network-with-body.py` → Capture API responses → Summarize endpoints and payloads
+**Expected workflow:** Use `python3 -m scripts.cdp.cli.main network record --include-bodies` → Capture API responses → Summarize endpoints and payloads
 
 ---
 
@@ -63,7 +63,7 @@ Use browser-debugger to monitor network activity on localhost:3000/dashboard. La
 Launch localhost:3000/broken-page with browser-debugger in headed mode. Monitor the console for JavaScript errors while I interact with the page. After I reproduce the bug, show me the error stack traces.
 ```
 
-**Expected workflow:** Launch with `cdp-console.py` → User reproduces bug → Agent extracts console errors with timestamps
+**Expected workflow:** Run `python3 -m scripts.cdp.cli.main console stream` → User reproduces bug → Agent extracts console errors with timestamps
 
 ---
 

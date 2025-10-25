@@ -72,140 +72,176 @@ chrome --headless=new --dump-dom https://example.com > page.html
 chrome --headless=new --dump-dom https://example.com | grep "error"
 ```
 
-### Monitor Console Logs (Basic Workflow)
+### Monitor Console Logs (Python CLI)
 
 Use when you need to debug JavaScript errors or see console output.
 
-**Step 1: Start Chrome with debugging port**
+**Single Command:**
 ```bash
-chrome --headless=new --remote-debugging-port=9222 https://example.com &
+python3 -m scripts.cdp.cli.main console stream --url https://example.com \
+  --duration 30 \
+  --output /tmp/console.jsonl
 ```
 
-**Step 2: Wait for Chrome to start**
+**With filtering:**
 ```bash
-sleep 2
+# Only capture warnings and errors
+python3 -m scripts.cdp.cli.main console stream --url https://example.com \
+  --duration 30 \
+  --level warn \
+  --output /tmp/console.jsonl
 ```
 
-**Step 3: Get the page ID**
-```bash
-PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[] | select(.type == "page") | .id' | head -1)
-```
-
-> **Tip:** Page IDs change after navigation. Re-run this command before each capture instead of reusing stale IDs.
-
-**Step 4: Monitor console**
-```bash
-python3 scripts/collectors/cdp-console.py $PAGE_ID
-```
-
-Output format:
+Output format (JSONL):
 ```json
-{"type":"log","timestamp":1698765432,"message":"Hello world","stackTrace":null}
-{"type":"error","timestamp":1698765433,"message":"Uncaught TypeError...","stackTrace":{...}}
+{"timestamp":1698765432.123,"level":"log","text":"Hello world","url":"https://example.com","line":42}
+{"timestamp":1698765433.456,"level":"error","text":"Uncaught TypeError...","url":"https://example.com","line":55}
 ```
 
-**Step 5: Cleanup when done**
-```bash
-pkill -f "chrome.*9222"
-```
+**Automatic Chrome Management:** The Python CLI launches Chrome automatically, monitors console logs, and cleans up when done.
 
 ### Monitor Network Activity
 
-Follow the same setup as console monitoring (Steps 1-3), then:
-
+**Basic Network Monitoring:**
 ```bash
-python3 scripts/collectors/cdp-network.py $PAGE_ID
+python3 -m scripts.cdp.cli.main network record --url https://example.com \
+  --duration 30 \
+  --output /tmp/network.json
 ```
 
-Output format:
+**With Response Bodies:**
+```bash
+# Capture response bodies (useful for API debugging)
+python3 -m scripts.cdp.cli.main network record --url https://example.com \
+  --duration 30 \
+  --include-bodies \
+  --output /tmp/network.json
+```
+
+Output format (JSON):
 ```json
-{"event":"request","url":"https://api.example.com/data","method":"GET","requestId":"..."}
-{"event":"response","url":"https://api.example.com/data","status":200,"statusText":"OK","mimeType":"application/json","requestId":"..."}
-{"event":"failed","errorText":"net::ERR_CONNECTION_REFUSED","requestId":"..."}
+{
+  "requests": [
+    {"requestId":"...","url":"https://api.example.com/data","method":"GET","timestamp":1698765432.123}
+  ],
+  "responses": [
+    {"requestId":"...","status":200,"statusText":"OK","mimeType":"application/json","timestamp":1698765433.456}
+  ]
+}
 ```
 
-## Using the Orchestrator Script
+## Full Workflow Orchestration (Recommended)
 
-`scripts/core/debug-orchestrator.sh` coordinates Chrome, CDP collectors, and post-run summaries. Use it for full telemetry in one command.
+The `orchestrate` command coordinates all debugging activities in one command: Chrome management, console monitoring, network capture, DOM extraction, and summary generation.
 
 **Headless mode** (automated, no UI):
 ```bash
-./scripts/core/debug-orchestrator.sh "https://example.com/login" 20 /tmp/example.log \
-  --include-console --summary=both --idle=3
+python3 -m scripts.cdp.cli.main orchestrate headless https://example.com/login \
+  --duration 20 \
+  --console \
+  --network \
+  --summary both \
+  --output /tmp/example
 ```
 
-**Headed mode** (visible browser):
+**Headed mode** (visible browser for manual testing):
 ```bash
-./scripts/core/debug-orchestrator.sh "http://localhost:3000/checkout" 20 /tmp/checkout.log \
-  --mode=headed --include-console --summary=both
+python3 -m scripts.cdp.cli.main orchestrate headed http://localhost:3000/checkout \
+  --duration 20 \
+  --console \
+  --network \
+  --summary both \
+  --output /tmp/checkout
 ```
 
 What you get:
-- Network stream written to `/tmp/example.log`
-- Console stream written to `/tmp/example-console.log`
-- Text and JSON summaries printed at the end
-- Automatic Chrome startup/cleanup on port 9222
+- Network trace in JSON format
+- Console logs in JSONL format
+- DOM snapshot as HTML
+- Text and JSON summaries
+- Automatic Chrome lifecycle management
 
-### Useful Orchestrator Flags
+### Python CLI Options
 
-- `--mode=headed|headless`: Launch visible Chrome or run headless (default: headless)
-- `--idle=<seconds>`: Stop capture after the page goes quiet (applies to both console and network)
-- `--include-console`: Capture console events alongside network data
-- `--console-log=PATH`: Direct console output to a custom file
-- `--summary=text|json|both`: Control summarizer output format
-- `--filter="<substring>"`: Capture response bodies for matching URLs (use cautiously, bodies can be large)
+**Available Subcommands:**
+- `session` - List and manage CDP targets
+- `eval` - Execute JavaScript expressions
+- `dom` - Extract DOM snapshots
+- `console` - Stream console logs
+- `network` - Capture network traffic
+- `orchestrate` - Full debugging workflow (recommended)
+- `query` - Execute arbitrary CDP commands
+
+**Common Orchestrate Options:**
+- `--mode headed|headless` - Launch visible Chrome or run headless (default: headless)
+- `--duration SECONDS` - Capture duration in seconds
+- `--console` - Enable console log monitoring
+- `--network` - Enable network traffic capture
+- `--include-bodies` - Capture response bodies (use with `--network`)
+- `--summary text|json|both` - Generate summary in specified format(s)
+- `--output PATH` - Base path for output files
+
+**Global Options:**
+- `--chrome-port PORT` - Chrome debugging port (default: 9222)
+- `--timeout SECONDS` - Command timeout (default: 30)
+- `--format json|text|table` - Output format
+- `--quiet` - Suppress non-essential output
+- `--verbose` - Enable debug logging
 
 ### Handling Port Conflicts
 
-If Chrome is already bound to port 9222, free the port and rerun:
+If Chrome is already bound to port 9222:
 ```bash
 pkill -f "chrome.*9222"
 ```
 
-## Script Organization
+Or use a different port:
+```bash
+python3 -m scripts.cdp.cli.main --chrome-port 9223 orchestrate https://example.com
+```
 
-This skill's scripts are organized by function:
+## Architecture
 
-- **scripts/core/**: Main workflow scripts
-  - `chrome-launcher.sh` - Launch Chrome with CDP enabled
-  - `debug-orchestrator.sh` - High-level workflow coordinator
+**Python CDP Package** (`scripts/cdp/`):
+- `connection.py` - WebSocket CDP connection with automatic reconnection
+- `session.py` - Target discovery and session management
+- `collectors/` - Console, network, and DOM monitoring
+- `cli/` - Unified command-line interface
 
-- **scripts/collectors/**: CDP monitoring scripts
-  - `cdp-console.py` - Console log monitoring
-  - `cdp-network.py` - Network request/response tracking
-  - `cdp-network-with-body.py` - Network with response body capture
-  - `cdp-dom-monitor.py` - Real-time DOM/form field change monitoring
+**Chrome Launcher** (`scripts/core/chrome-launcher.sh`):
+- Launches Chrome with CDP enabled (headless/headed)
+- Manages isolated profiles for Chrome 136+ compatibility
+- Returns JSON contract with WebSocket URL and process info
 
-- **scripts/utilities/**: Helper scripts
-  - `summarize.py` - Post-capture summary generation
-  - `cleanup-chrome.sh` - Kill Chrome processes and release ports
 
-**For complete script documentation and advanced usage, see [scripts/README.md](scripts/README.md)**
+**For complete documentation, see [docs/guides/workflows.md](docs/guides/workflows.md)**
 
 ## Common Workflows
 
 ### Interactive DOM Inspection (Headed Mode)
 
-Launch Chrome, allow user to interact, then extract DOM state for analysis.
+Launch visible Chrome for manual testing, then extract DOM state after user interactions.
 
-**Step 1: Launch Chrome**
+**Automated Workflow (Recommended):**
 ```bash
-./scripts/core/debug-orchestrator.sh "http://localhost:3000/signin" \
-  --mode=headed \
-  --include-console
+python3 -m scripts.cdp.cli.main orchestrate headed http://localhost:3000/signin \
+  --duration 60 \
+  --console \
+  --network
 ```
 
-**Step 2: User Interacts**
-Browser stays open. User clicks, types, navigates as needed.
+This launches Chrome, monitors activity for 60 seconds (or until you press Ctrl+C), then automatically:
+- Extracts final DOM state
+- Saves console logs
+- Captures network activity
+- Generates summary report
 
-**Step 3: Extract Current DOM**
+**Manual DOM Extraction:**
+If you need to extract DOM during interaction without stopping the session:
 ```bash
-# Re-fetch WebSocket URL (page may have navigated)
-WS_URL=$(curl -s http://localhost:9222/json | jq -r '.[] | select(.type == "page") | .webSocketDebuggerUrl' | head -1)
-
-# Extract DOM with websocat
-echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"document.documentElement.outerHTML","returnByValue":true}}' \
-  | websocat -n1 -B 1048576 "$WS_URL" \
+# Extract DOM at any point
+python3 -m scripts.cdp.cli.main dom http://localhost:3000 \
+  --output /tmp/dom-snapshot.html \
   | jq -r '.result.result.value' > /tmp/live-dom.html
 ```
 
@@ -317,7 +353,12 @@ WS_URL=$(curl -s http://localhost:9222/json | jq -r '.[] | select(.type == "page
 
 **Cause:** Chrome 136+ requires `--user-data-dir` for CDP access.
 
-**Solution:** Use `scripts/core/chrome-launcher.sh` or `scripts/core/debug-orchestrator.sh` (automatic). If launching manually:
+**Solution:** Use the Python CLI `orchestrate` command (handles this automatically):
+```bash
+python3 -m scripts.cdp.cli.main orchestrate headed "$URL"
+```
+
+If launching manually:
 ```bash
 PROFILE="$HOME/.chrome-debug-profile"
 chrome --user-data-dir="$PROFILE" --remote-debugging-port=9222 URL
@@ -352,28 +393,36 @@ Complete reference documentation:
 ## Quick Reference
 
 ```bash
-# Get DOM snapshot
+# Get DOM snapshot (simple)
 chrome --headless=new --dump-dom $URL
 
-# Monitor console (4-step pattern)
-chrome --headless=new --remote-debugging-port=9222 $URL &
-sleep 2
-PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[] | select(.type == "page") | .id' | head -1)
-python3 scripts/collectors/cdp-console.py $PAGE_ID
+# Get DOM snapshot (Python CLI)
+python3 -m scripts.cdp.cli.main dom $URL --output /tmp/dom.html
 
-# Monitor network
-python3 scripts/collectors/cdp-network.py $PAGE_ID
+# Monitor console logs
+python3 -m scripts.cdp.cli.main console stream --url $URL --duration 30 --output /tmp/console.jsonl
 
-# Orchestrated capture with summaries
-./scripts/core/debug-orchestrator.sh "$URL" 15 /tmp/network.log --include-console --summary=both --idle=2
+# Monitor network traffic
+python3 -m scripts.cdp.cli.main network record --url $URL --duration 30 --include-bodies --output /tmp/network.json
+
+# Full workflow orchestration (recommended)
+python3 -m scripts.cdp.cli.main orchestrate headless $URL \
+  --duration 30 \
+  --console \
+  --network \
+  --summary both \
+  --output /tmp/debug
 
 # Headed mode (interactive debugging)
-./scripts/core/debug-orchestrator.sh "$URL" --mode=headed --include-console
+python3 -m scripts.cdp.cli.main orchestrate headed $URL \
+  --console \
+  --network
 
-# Extract live DOM (after user interaction)
-WS_URL=$(curl -s http://localhost:9222/json | jq -r '.[] | select(.type == "page") | .webSocketDebuggerUrl' | head -1)
-echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"document.documentElement.outerHTML","returnByValue":true}}' \
-  | websocat -n1 -B 1048576 "$WS_URL" | jq -r '.result.result.value' > /tmp/live-dom.html
+# Execute JavaScript
+python3 -m scripts.cdp.cli.main eval $URL --expression "document.title" --format text
+
+# List Chrome targets
+python3 -m scripts.cdp.cli.main session list --format table
 
 # Cleanup
 pkill -f "chrome.*9222"
@@ -384,29 +433,41 @@ pkill -f "chrome.*9222"
 ### Example: Find all console errors on a page
 
 ```bash
-chrome --headless=new --remote-debugging-port=9222 https://example.com &
-sleep 2
-PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[] | select(.type == "page") | .id' | head -1)
-timeout 10 python3 scripts/collectors/cdp-console.py $PAGE_ID | grep '"type":"error"'
-pkill -f "chrome.*9222"
+python3 -m scripts.cdp.cli.main console stream --url https://example.com \
+  --duration 10 \
+  --level error \
+  --output /tmp/errors.jsonl
 ```
 
 ### Example: Check if a page makes API calls to a specific domain
 
 ```bash
-chrome --headless=new --remote-debugging-port=9222 https://example.com &
-sleep 2
-PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[] | select(.type == "page") | .id' | head -1)
-timeout 10 python3 scripts/collectors/cdp-network.py $PAGE_ID | grep 'api.example.com'
-pkill -f "chrome.*9222"
+python3 -m scripts.cdp.cli.main network record --url https://example.com \
+  --duration 10 \
+  --output /tmp/network.json
+
+# Then filter the output
+jq '.requests[] | select(.url | contains("api.example.com"))' /tmp/network.json
 ```
 
-### Example: Get the page title from DOM
+### Example: Get the page title via JavaScript evaluation
 
 ```bash
-chrome --headless=new --dump-dom https://example.com | \
-  grep -o '<title>.*</title>' | \
-  sed 's/<title>\(.*\)<\/title>/\1/'
+python3 -m scripts.cdp.cli.main eval https://example.com \
+  --expression "document.title" \
+  --format text
+```
+
+### Example: Full debugging session with all telemetry
+
+```bash
+python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
+  --duration 30 \
+  --console \
+  --network \
+  --include-bodies \
+  --summary both \
+  --output /tmp/full-debug
 ```
 
 ## Summary

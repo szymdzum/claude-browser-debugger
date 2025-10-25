@@ -1,0 +1,78 @@
+{
+  "runtime_evaluate_success": {
+    "id": 1,
+    "result": {
+      "result": {
+        "type": "string",
+        "value": "Example Domain"
+      }
+    }
+  },
+  "runtime_evaluate_error": {
+    "id": 1,
+    "error": {
+      "code": -32000,
+      "message": "Cannot find context with specified id"
+    }
+  },
+  "console_message_added": {
+    "method": "Console.messageAdded",
+    "params": {
+      "message": {
+        "source": "console-api",
+        "level": "log",
+        "text": "Hello, world!",
+        "timestamp": 1634567890.123,
+        "url": "https://example.com",
+        "lineNumber": 42
+      }
+    }
+  },
+  "network_request_will_be_sent": {
+    "method": "Network.requestWillBeSent",
+    "params": {
+      "requestId": "ABC123",
+      "request": {
+        "url": "https://example.com/api/data",
+        "method": "GET",
+        "headers": {
+          "User-Agent": "Mozilla/5.0"
+        }
+      },
+      "timestamp": 1634567890.123,
+      "type": "XHR"
+    }
+  },
+  "network_response_received": {
+    "method": "Network.responseReceived",
+    "params": {
+      "requestId": "ABC123",
+      "response": {
+        "url": "https://example.com/api/data",
+        "status": 200,
+        "statusText": "OK",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      },
+      "timestamp": 1634567890.456,
+      "type": "XHR"
+    }
+  },
+  "target_list": [
+    {
+      "id": "E4A12F",
+      "type": "page",
+      "title": "Example Domain",
+      "url": "https://example.com",
+      "webSocketDebuggerUrl": "ws://localhost:9222/devtools/page/E4A12F"
+    },
+    {
+      "id": "F5B23G",
+      "type": "page",
+      "title": "Another Page",
+      "url": "https://another.com",
+      "webSocketDebuggerUrl": "ws://localhost:9222/devtools/page/F5B23G"
+    }
+  ]
+}

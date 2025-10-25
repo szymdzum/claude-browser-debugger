@@ -27,9 +27,9 @@ if [ -z "$WS_URL" ] || [ "$WS_URL" = "null" ]; then
     echo ""
     echo "L Chrome not running on port $PORT"
     echo ""
-    echo "=¡ Recovery:"
+    echo "=ï¿½ Recovery:"
     echo "   - Start Chrome with CDP: chrome --remote-debugging-port=$PORT"
-    echo "   - Or use debug-orchestrator.sh to launch headed mode"
+    echo "   - Or use: python3 -m scripts.cdp.cli.main orchestrate headed <URL>"
     echo ""
 
     # Generate error summary.json
@@ -90,7 +90,7 @@ if [ "$REDUX_RESULT" != "null" ] && [ -n "$REDUX_RESULT" ]; then
     results[redux]="success"
     ((success_count++))
 else
-    echo "   Not available"
+    echo "ï¿½  Not available"
     results[redux]="not_available"
     errors+=('{"source":"redux","error":"window.__EXPOSED_REDUX_STORE__ is undefined","suggestion":"Run inject-redux.js before extraction or use parse-redux-logs.py"}')
 fi
@@ -176,13 +176,13 @@ cat > "$OUTPUT_DIR/summary.json" <<EOF
 EOF
 
 # T025: Final user-friendly output
-echo "=Â State saved to: $OUTPUT_DIR"
+echo "=ï¿½ State saved to: $OUTPUT_DIR"
 echo ""
 
 if [ "$success_count" -eq "$total_count" ]; then
     echo " All extractions successful!"
 elif [ "$success_count" -gt 0 ]; then
-    echo "   Partial success: $success_count/$total_count sources extracted"
+    echo "ï¿½  Partial success: $success_count/$total_count sources extracted"
     echo "   See $OUTPUT_DIR/summary.json for details"
 else
     echo "L All extractions failed"
