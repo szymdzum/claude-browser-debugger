@@ -107,8 +107,9 @@ test(integration): add tests for headed mode workflow
 
 All pull requests must pass the following checks before merging:
 
-#### 1. **Tests** (Python 3.10, 3.11, 3.12)
+#### 1. **Tests** (Python 3.10, 3.12)
 - All tests must pass: `pytest tests/ -v --tb=short`
+- Tested on minimum (3.10) and latest (3.12) versions
 - No regressions in existing tests
 - New features must include tests
 
