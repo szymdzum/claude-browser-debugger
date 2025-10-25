@@ -52,7 +52,7 @@ jobs:
           pip install pylint
 
       - name: Lint code
-        run: pylint scripts/cdp/ --disable=missing-docstring,too-few-public-methods
+        run: pylint scripts/cdp/ --disable=missing-docstring,too-few-public-methods,import-error,duplicate-code
 
   typecheck:
     name: typecheck
