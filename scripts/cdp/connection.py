@@ -56,7 +56,7 @@ class CDPConnection:
         ws_url: str,
         *,
         timeout: float = 30.0,
-        max_size: int = 2_097_152  # 2MB default buffer
+        max_size: int = 2_097_152,  # 2MB default buffer
     ):
         """Initialize CDP connection.
 
@@ -101,17 +101,14 @@ class CDPConnection:
         """
         try:
             logger.info(f"Connecting to {self.ws_url}")
-            self._ws = await websockets.connect(
-                self.ws_url,
-                max_size=self.max_size
-            )
+            self._ws = await websockets.connect(self.ws_url, max_size=self.max_size)
             self._is_connected = True
             self._receive_task = asyncio.create_task(self._receive_loop())
             logger.info("CDP connection established")
         except Exception as e:
             raise ConnectionFailedError(
                 f"Failed to connect to {self.ws_url}: {e}",
-                details={"url": self.ws_url, "error": str(e)}
+                details={"url": self.ws_url, "error": str(e)},
             )
 
     async def disconnect(self) -> None:
@@ -131,9 +128,9 @@ class CDPConnection:
         if self._ws:
             try:
                 # Check if already closed using state (websockets 15+)
-                if hasattr(self._ws, 'state') and self._ws.state.name != "CLOSED":
+                if hasattr(self._ws, "state") and self._ws.state.name != "CLOSED":
                     await self._ws.close()
-                elif not hasattr(self._ws, 'state'):
+                elif not hasattr(self._ws, "state"):
                     # Fallback: just try to close
                     await self._ws.close()
             except Exception as e:
@@ -150,10 +147,7 @@ class CDPConnection:
         logger.info("CDP connection closed")
 
     async def reconnect_with_backoff(
-        self,
-        max_attempts: int = 5,
-        initial_delay: float = 1.0,
-        max_delay: float = 30.0
+        self, max_attempts: int = 5, initial_delay: float = 1.0, max_delay: float = 30.0
     ) -> None:
         """Reconnect with exponential backoff strategy.
 
@@ -177,7 +171,9 @@ class CDPConnection:
         delay = initial_delay
 
         for attempt in range(1, max_attempts + 1):
-            logger.info(f"Reconnection attempt {attempt}/{max_attempts} (backoff: {delay}s)")
+            logger.info(
+                f"Reconnection attempt {attempt}/{max_attempts} (backoff: {delay}s)"
+            )
 
             try:
                 await self.connect()
@@ -235,7 +231,7 @@ class CDPConnection:
         method: str,
         params: Optional[dict] = None,
         *,
-        timeout: Optional[float] = None
+        timeout: Optional[float] = None,
     ) -> dict:
         """Execute CDP command and wait for response.
 
@@ -269,11 +265,7 @@ class CDPConnection:
             self._enabled_domains.add(domain)
 
         # Send command
-        message = json.dumps({
-            "id": cmd_id,
-            "method": method,
-            "params": params or {}
-        })
+        message = json.dumps({"id": cmd_id, "method": method, "params": params or {}})
 
         try:
             await self._ws.send(message)
@@ -286,18 +278,14 @@ class CDPConnection:
 
         except asyncio.TimeoutError:
             raise CDPTimeoutError(
-                f"Command timed out",
-                command_method=method,
-                timeout=cmd_timeout
+                f"Command timed out", command_method=method, timeout=cmd_timeout
             )
         finally:
             # Clean up pending command
             self._pending_commands.pop(cmd_id, None)
 
     def subscribe(
-        self,
-        event_name: str,
-        callback: Callable[[dict], Awaitable[None]]
+        self, event_name: str, callback: Callable[[dict], Awaitable[None]]
     ) -> None:
         """Register async callback for CDP event.
 
@@ -315,9 +303,7 @@ class CDPConnection:
         logger.debug(f"Subscribed to event: {event_name}")
 
     def unsubscribe(
-        self,
-        event_name: str,
-        callback: Callable[[dict], Awaitable[None]]
+        self, event_name: str, callback: Callable[[dict], Awaitable[None]]
     ) -> None:
         """Remove event callback.
 
@@ -359,7 +345,7 @@ class CDPConnection:
                                     CommandFailedError(
                                         error.get("message", "Unknown CDP error"),
                                         error_code=error.get("code"),
-                                        details={"error": error}
+                                        details={"error": error},
                                     )
                                 )
                             # Success response
@@ -383,7 +369,7 @@ class CDPConnection:
                                 # Isolate handler errors (Principle 6: Diagnostic Transparency)
                                 logger.error(
                                     f"Event handler error for {event_name}: {e}",
-                                    exc_info=True
+                                    exc_info=True,
                                 )
 
                 except json.JSONDecodeError as e:

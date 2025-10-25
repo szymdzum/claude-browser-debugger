@@ -29,11 +29,7 @@ class TestConfigurationPrecedence:
         """Verify configuration loads from ~/.cdprc file."""
         with TemporaryDirectory() as tmpdir:
             config_file = Path(tmpdir) / ".cdprc"
-            config_data = {
-                "chrome_port": 9333,
-                "timeout": 60.0,
-                "log_level": "DEBUG"
-            }
+            config_data = {"chrome_port": 9333, "timeout": 60.0, "log_level": "DEBUG"}
             config_file.write_text(json.dumps(config_data))
 
             config = Configuration()
@@ -88,7 +84,7 @@ class TestConfigurationPrecedence:
                 config.merge(chrome_port=9555, timeout=20.0)
 
                 assert config.chrome_port == 9555  # CLI wins
-                assert config.timeout == 20.0      # CLI wins
+                assert config.timeout == 20.0  # CLI wins
             finally:
                 os.environ.pop("CDP_CHROME_PORT", None)
                 os.environ.pop("CDP_TIMEOUT", None)
@@ -115,10 +111,10 @@ class TestConfigurationPrecedence:
                 config.merge(timeout=15.0)
 
                 # Verify precedence
-                assert config.chrome_port == 9444   # Env wins over file
-                assert config.timeout == 15.0       # CLI wins over file
+                assert config.chrome_port == 9444  # Env wins over file
+                assert config.timeout == 15.0  # CLI wins over file
                 assert config.log_level == "DEBUG"  # Env wins (no CLI override)
-                assert config.max_size == 2_097_152 # Default (no override)
+                assert config.max_size == 2_097_152  # Default (no override)
             finally:
                 os.environ.pop("CDP_CHROME_PORT", None)
                 os.environ.pop("CDP_LOG_LEVEL", None)
@@ -156,9 +152,9 @@ class TestConfigurationPrecedence:
             config = Configuration()
             config.load_from_file(str(config_file))
 
-            assert config.chrome_port == 9999     # From file
-            assert config.timeout == 30.0         # Default
-            assert config.max_size == 2_097_152   # Default
+            assert config.chrome_port == 9999  # From file
+            assert config.timeout == 30.0  # Default
+            assert config.max_size == 2_097_152  # Default
 
 
 class TestConfigurationTypes:
@@ -167,7 +163,7 @@ class TestConfigurationTypes:
     def test_port_type_conversion_from_env(self):
         """Verify environment variables are converted to correct types."""
         os.environ["CDP_CHROME_PORT"] = "9333"  # String
-        os.environ["CDP_TIMEOUT"] = "45.5"      # String
+        os.environ["CDP_TIMEOUT"] = "45.5"  # String
 
         try:
             config = Configuration()

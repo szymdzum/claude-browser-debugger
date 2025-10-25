@@ -29,12 +29,12 @@ def chrome_session():
         "./scripts/core/chrome-launcher.sh",
         "--mode=headless",
         "--port=auto",
-        "--url=data:text/html,<script>console.log('Test message');</script>"
+        "--url=data:text/html,<script>console.log('Test message');</script>",
     ]
 
     output = subprocess.check_output(launcher_cmd, text=True, stderr=subprocess.DEVNULL)
     # Parse only the first line (JSON output), ignore debug messages
-    session = json.loads(output.split('\n')[0])
+    session = json.loads(output.split("\n")[0])
 
     yield session
 
@@ -65,9 +65,11 @@ async def test_console_collector_with_real_chrome(chrome_session, tmp_path):
             await conn.execute_command("Page.enable")
             await conn.execute_command(
                 "Page.navigate",
-                {"url": "data:text/html,<script>console.log('Hello');"
-                         "console.warn('Warning');"
-                         "console.error('Error');</script>"}
+                {
+                    "url": "data:text/html,<script>console.log('Hello');"
+                    "console.warn('Warning');"
+                    "console.error('Error');</script>"
+                },
             )
 
             # Wait for page to load and console messages to arrive
@@ -122,9 +124,11 @@ async def test_console_collector_memory_stability(chrome_session, tmp_path):
             await conn.execute_command("Page.enable")
             await conn.execute_command(
                 "Page.navigate",
-                {"url": "data:text/html,<script>"
-                         "setInterval(() => console.log('Log ' + Date.now()), 100);"
-                         "</script>"}
+                {
+                    "url": "data:text/html,<script>"
+                    "setInterval(() => console.log('Log ' + Date.now()), 100);"
+                    "</script>"
+                },
             )
 
             # Monitor memory every 5 seconds
@@ -141,11 +145,15 @@ async def test_console_collector_memory_stability(chrome_session, tmp_path):
     variation_pct = ((max_rss - min_rss) / avg_rss) * 100
 
     print(f"Memory samples: {memory_samples}")
-    print(f"Min RSS: {min_rss:.2f}MB, Max RSS: {max_rss:.2f}MB, Avg RSS: {avg_rss:.2f}MB")
+    print(
+        f"Min RSS: {min_rss:.2f}MB, Max RSS: {max_rss:.2f}MB, Avg RSS: {avg_rss:.2f}MB"
+    )
     print(f"Variation: {variation_pct:.2f}%")
 
     # FR-012: Memory variation must be <5%
-    assert variation_pct < 5.0, f"Memory variation {variation_pct:.2f}% exceeds 5% threshold"
+    assert (
+        variation_pct < 5.0
+    ), f"Memory variation {variation_pct:.2f}% exceeds 5% threshold"
 
 
 @pytest.mark.asyncio
@@ -161,16 +169,20 @@ async def test_console_collector_level_filtering_integration(chrome_session, tmp
 
     async with CDPConnection(chrome_session["ws_url"]) as conn:
         # Use ConsoleCollector with warn filter
-        async with ConsoleCollector(conn, output_file, level_filter="warn") as collector:
+        async with ConsoleCollector(
+            conn, output_file, level_filter="warn"
+        ) as collector:
             await conn.execute_command("Page.enable")
             await conn.execute_command(
                 "Page.navigate",
-                {"url": "data:text/html,<script>"
-                         "console.log('Should be filtered');"
-                         "console.info('Also filtered');"
-                         "console.warn('Should appear');"
-                         "console.error('Should also appear');"
-                         "</script>"}
+                {
+                    "url": "data:text/html,<script>"
+                    "console.log('Should be filtered');"
+                    "console.info('Also filtered');"
+                    "console.warn('Should appear');"
+                    "console.error('Should also appear');"
+                    "</script>"
+                },
             )
 
             # Wait for messages
@@ -189,8 +201,9 @@ async def test_console_collector_level_filtering_integration(chrome_session, tmp
     assert "info" not in levels, "info messages should be filtered"
 
     # At least one warn or error should be captured
-    assert any(l in ["warn", "warning", "error"] for l in levels), \
-        "Expected at least one warn/error message"
+    assert any(
+        l in ["warn", "warning", "error"] for l in levels
+    ), "Expected at least one warn/error message"
 
 
 @pytest.mark.asyncio
@@ -209,11 +222,13 @@ async def test_console_collector_comparison_with_legacy(chrome_session, tmp_path
             await conn.execute_command("Page.enable")
             await conn.execute_command(
                 "Page.navigate",
-                {"url": "data:text/html,<script>"
-                         "console.log('Message 1');"
-                         "console.log('Message 2');"
-                         "console.log('Message 3');"
-                         "</script>"}
+                {
+                    "url": "data:text/html,<script>"
+                    "console.log('Message 1');"
+                    "console.log('Message 2');"
+                    "console.log('Message 3');"
+                    "</script>"
+                },
             )
 
             await asyncio.sleep(2)
@@ -251,11 +266,13 @@ async def test_console_collector_handles_complex_messages(chrome_session, tmp_pa
             await conn.execute_command("Page.enable")
             await conn.execute_command(
                 "Page.navigate",
-                {"url": "data:text/html,<script>"
-                         "console.log('String with \"quotes\" and \\n newlines');"
-                         "console.log({key: 'value', nested: {foo: 'bar'}});"
-                         "console.log([1, 2, 3, 'four']);"
-                         "</script>"}
+                {
+                    "url": "data:text/html,<script>"
+                    "console.log('String with \"quotes\" and \\n newlines');"
+                    "console.log({key: 'value', nested: {foo: 'bar'}});"
+                    "console.log([1, 2, 3, 'four']);"
+                    "</script>"
+                },
             )
 
             await asyncio.sleep(2)
@@ -289,9 +306,11 @@ async def test_console_collector_graceful_shutdown(chrome_session, tmp_path):
         await conn.execute_command("Page.enable")
         await conn.execute_command(
             "Page.navigate",
-            {"url": "data:text/html,<script>"
-                     "for (let i = 0; i < 10; i++) console.log('Message ' + i);"
-                     "</script>"}
+            {
+                "url": "data:text/html,<script>"
+                "for (let i = 0; i < 10; i++) console.log('Message ' + i);"
+                "</script>"
+            },
         )
 
         await asyncio.sleep(1)

@@ -79,25 +79,29 @@ async def test_console_collector_message_capture(tmp_path):
     await collector.start()
 
     # Simulate console message events
-    await collector._on_message({
-        "message": {
-            "timestamp": 1634567890.123,
-            "level": "log",
-            "text": "Hello, world!",
-            "url": "https://example.com",
-            "lineNumber": 42
+    await collector._on_message(
+        {
+            "message": {
+                "timestamp": 1634567890.123,
+                "level": "log",
+                "text": "Hello, world!",
+                "url": "https://example.com",
+                "lineNumber": 42,
+            }
         }
-    })
+    )
 
-    await collector._on_message({
-        "message": {
-            "timestamp": 1634567891.456,
-            "level": "error",
-            "text": "Uncaught TypeError",
-            "url": "https://example.com",
-            "lineNumber": 55
+    await collector._on_message(
+        {
+            "message": {
+                "timestamp": 1634567891.456,
+                "level": "error",
+                "text": "Uncaught TypeError",
+                "url": "https://example.com",
+                "lineNumber": 55,
+            }
         }
-    })
+    )
 
     # Verify buffer contains 2 entries
     assert len(collector._buffer) == 2
@@ -128,52 +132,62 @@ async def test_console_collector_level_filter(tmp_path):
 
     # Create collector with warn level filter and output file for buffering
     output_file = tmp_path / "console.jsonl"
-    collector = ConsoleCollector(mock_conn, output_path=output_file, level_filter="warn")
+    collector = ConsoleCollector(
+        mock_conn, output_path=output_file, level_filter="warn"
+    )
     await collector.start()
 
     # Simulate log message (should be filtered out)
-    await collector._on_message({
-        "message": {
-            "timestamp": 1,
-            "level": "log",
-            "text": "Debug info",
-            "url": "",
-            "lineNumber": 0
+    await collector._on_message(
+        {
+            "message": {
+                "timestamp": 1,
+                "level": "log",
+                "text": "Debug info",
+                "url": "",
+                "lineNumber": 0,
+            }
         }
-    })
+    )
 
     # Simulate info message (should be filtered out)
-    await collector._on_message({
-        "message": {
-            "timestamp": 2,
-            "level": "info",
-            "text": "Info message",
-            "url": "",
-            "lineNumber": 0
+    await collector._on_message(
+        {
+            "message": {
+                "timestamp": 2,
+                "level": "info",
+                "text": "Info message",
+                "url": "",
+                "lineNumber": 0,
+            }
         }
-    })
+    )
 
     # Simulate warn message (should be captured)
-    await collector._on_message({
-        "message": {
-            "timestamp": 3,
-            "level": "warn",
-            "text": "Warning message",
-            "url": "",
-            "lineNumber": 0
+    await collector._on_message(
+        {
+            "message": {
+                "timestamp": 3,
+                "level": "warn",
+                "text": "Warning message",
+                "url": "",
+                "lineNumber": 0,
+            }
         }
-    })
+    )
 
     # Simulate error message (should be captured)
-    await collector._on_message({
-        "message": {
-            "timestamp": 4,
-            "level": "error",
-            "text": "Error message",
-            "url": "",
-            "lineNumber": 0
+    await collector._on_message(
+        {
+            "message": {
+                "timestamp": 4,
+                "level": "error",
+                "text": "Error message",
+                "url": "",
+                "lineNumber": 0,
+            }
         }
-    })
+    )
 
     # Verify only warn and error were captured
     assert len(collector._buffer) == 2
@@ -203,15 +217,17 @@ async def test_console_collector_bounded_buffer(tmp_path):
 
     # Add 1500 messages (exceeds buffer limit)
     for i in range(1500):
-        await collector._on_message({
-            "message": {
-                "timestamp": i,
-                "level": "log",
-                "text": f"Message {i}",
-                "url": "",
-                "lineNumber": 0
+        await collector._on_message(
+            {
+                "message": {
+                    "timestamp": i,
+                    "level": "log",
+                    "text": f"Message {i}",
+                    "url": "",
+                    "lineNumber": 0,
+                }
             }
-        })
+        )
 
     # Verify buffer is capped at 1000
     assert len(collector._buffer) == 1000
@@ -246,25 +262,29 @@ async def test_console_collector_flush_to_disk(tmp_path):
     await collector.start()
 
     # Add messages
-    await collector._on_message({
-        "message": {
-            "timestamp": 1,
-            "level": "log",
-            "text": "First message",
-            "url": "https://example.com",
-            "lineNumber": 10
+    await collector._on_message(
+        {
+            "message": {
+                "timestamp": 1,
+                "level": "log",
+                "text": "First message",
+                "url": "https://example.com",
+                "lineNumber": 10,
+            }
         }
-    })
+    )
 
-    await collector._on_message({
-        "message": {
-            "timestamp": 2,
-            "level": "error",
-            "text": "Second message",
-            "url": "https://example.com",
-            "lineNumber": 20
+    await collector._on_message(
+        {
+            "message": {
+                "timestamp": 2,
+                "level": "error",
+                "text": "Second message",
+                "url": "https://example.com",
+                "lineNumber": 20,
+            }
         }
-    })
+    )
 
     # Flush to disk
     collector._flush_to_disk()
@@ -316,15 +336,17 @@ async def test_console_collector_context_manager(tmp_path):
         assert collector._running
 
         # Add message
-        await collector._on_message({
-            "message": {
-                "timestamp": 1,
-                "level": "log",
-                "text": "Test message",
-                "url": "",
-                "lineNumber": 0
+        await collector._on_message(
+            {
+                "message": {
+                    "timestamp": 1,
+                    "level": "log",
+                    "text": "Test message",
+                    "url": "",
+                    "lineNumber": 0,
+                }
             }
-        })
+        )
 
     # Verify stopped
     assert not collector._running
@@ -361,15 +383,17 @@ async def test_console_collector_periodic_flush(tmp_path):
         assert collector._flush_task is not None
 
         # Add message
-        await collector._on_message({
-            "message": {
-                "timestamp": 1,
-                "level": "log",
-                "text": "Test",
-                "url": "",
-                "lineNumber": 0
+        await collector._on_message(
+            {
+                "message": {
+                    "timestamp": 1,
+                    "level": "log",
+                    "text": "Test",
+                    "url": "",
+                    "lineNumber": 0,
+                }
             }
-        })
+        )
 
         # Wait for periodic flush to trigger (mocked sleep)
         await asyncio.sleep(0.1)

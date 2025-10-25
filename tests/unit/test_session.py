@@ -25,7 +25,7 @@ def mock_targets_response():
             "webSocketDebuggerUrl": "ws://localhost:9222/devtools/page/page-1",
             "description": "",
             "devtoolsFrontendUrl": "/devtools/inspector.html?ws=localhost:9222/devtools/page/page-1",
-            "faviconUrl": "https://example.com/favicon.ico"
+            "faviconUrl": "https://example.com/favicon.ico",
         },
         {
             "id": "page-2",
@@ -35,7 +35,7 @@ def mock_targets_response():
             "webSocketDebuggerUrl": "ws://localhost:9222/devtools/page/page-2",
             "description": "",
             "devtoolsFrontendUrl": "/devtools/inspector.html?ws=localhost:9222/devtools/page/page-2",
-            "faviconUrl": "https://github.com/favicon.ico"
+            "faviconUrl": "https://github.com/favicon.ico",
         },
         {
             "id": "worker-1",
@@ -45,8 +45,8 @@ def mock_targets_response():
             "webSocketDebuggerUrl": "ws://localhost:9222/devtools/page/worker-1",
             "description": "",
             "devtoolsFrontendUrl": "",
-            "faviconUrl": ""
-        }
+            "faviconUrl": "",
+        },
     ]
 
 
@@ -60,7 +60,7 @@ def test_target_initialization():
         "webSocketDebuggerUrl": "ws://localhost:9222/devtools/page/test-id",
         "description": "Test description",
         "devtoolsFrontendUrl": "/devtools/inspector.html",
-        "faviconUrl": "https://test.com/favicon.ico"
+        "faviconUrl": "https://test.com/favicon.ico",
     }
 
     target = Target(target_data)
@@ -82,7 +82,7 @@ def test_target_to_dict():
         "type": "page",
         "title": "Test Page",
         "url": "https://test.com",
-        "webSocketDebuggerUrl": "ws://localhost:9222/devtools/page/test-id"
+        "webSocketDebuggerUrl": "ws://localhost:9222/devtools/page/test-id",
     }
 
     target = Target(target_data)
@@ -136,14 +136,14 @@ def test_list_targets_success(mock_targets_response):
     mock_response.__enter__ = Mock(return_value=mock_response)
     mock_response.__exit__ = Mock(return_value=False)
 
-    with patch('urllib.request.urlopen', return_value=mock_response) as mock_urlopen:
+    with patch("urllib.request.urlopen", return_value=mock_response) as mock_urlopen:
         targets = session.list_targets()
 
         # Verify HTTP endpoint was called
         mock_urlopen.assert_called_once()
         args, kwargs = mock_urlopen.call_args
         assert args[0] == "http://localhost:9222/json"
-        assert kwargs['timeout'] == 5.0
+        assert kwargs["timeout"] == 5.0
 
         # Verify targets were parsed
         assert len(targets) == 3
@@ -167,7 +167,7 @@ def test_list_targets_with_type_filter(mock_targets_response):
     mock_response.__enter__ = Mock(return_value=mock_response)
     mock_response.__exit__ = Mock(return_value=False)
 
-    with patch('urllib.request.urlopen', return_value=mock_response):
+    with patch("urllib.request.urlopen", return_value=mock_response):
         # Filter by page type
         page_targets = session.list_targets(target_type="page")
         assert len(page_targets) == 2
@@ -193,7 +193,7 @@ def test_list_targets_with_url_filter(mock_targets_response):
     mock_response.__enter__ = Mock(return_value=mock_response)
     mock_response.__exit__ = Mock(return_value=False)
 
-    with patch('urllib.request.urlopen', return_value=mock_response):
+    with patch("urllib.request.urlopen", return_value=mock_response):
         # Filter by URL substring (case-insensitive)
         github_targets = session.list_targets(url_pattern="github")
         assert len(github_targets) == 1
@@ -219,7 +219,7 @@ def test_list_targets_combined_filters(mock_targets_response):
     mock_response.__enter__ = Mock(return_value=mock_response)
     mock_response.__exit__ = Mock(return_value=False)
 
-    with patch('urllib.request.urlopen', return_value=mock_response):
+    with patch("urllib.request.urlopen", return_value=mock_response):
         # Filter by type and URL
         targets = session.list_targets(target_type="page", url_pattern="example")
         assert len(targets) == 1
@@ -237,7 +237,11 @@ def test_list_targets_connection_error():
 
     # Mock urllib.request.urlopen to raise URLError
     import urllib.error
-    with patch('urllib.request.urlopen', side_effect=urllib.error.URLError("Connection refused")):
+
+    with patch(
+        "urllib.request.urlopen",
+        side_effect=urllib.error.URLError("Connection refused"),
+    ):
         with pytest.raises(CDPError, match="Failed to connect to Chrome"):
             session.list_targets()
 
@@ -256,7 +260,7 @@ def test_list_targets_invalid_json():
     mock_response.__enter__ = Mock(return_value=mock_response)
     mock_response.__exit__ = Mock(return_value=False)
 
-    with patch('urllib.request.urlopen', return_value=mock_response):
+    with patch("urllib.request.urlopen", return_value=mock_response):
         with pytest.raises(CDPError, match="Invalid JSON response"):
             session.list_targets()
 
@@ -275,7 +279,7 @@ def test_get_target_by_id(mock_targets_response):
     mock_response.__enter__ = Mock(return_value=mock_response)
     mock_response.__exit__ = Mock(return_value=False)
 
-    with patch('urllib.request.urlopen', return_value=mock_response):
+    with patch("urllib.request.urlopen", return_value=mock_response):
         # Find existing target
         target = session.get_target_by_id("page-1")
         assert target is not None
@@ -301,7 +305,7 @@ async def test_connect_to_target():
         "type": "page",
         "title": "Test",
         "url": "https://test.com",
-        "webSocketDebuggerUrl": "ws://localhost:9222/devtools/page/test-id"
+        "webSocketDebuggerUrl": "ws://localhost:9222/devtools/page/test-id",
     }
     target = Target(target_data)
 
@@ -326,7 +330,7 @@ async def test_connect_to_target_no_ws_url():
         "type": "page",
         "title": "Test",
         "url": "https://test.com",
-        "webSocketDebuggerUrl": ""  # Empty WebSocket URL
+        "webSocketDebuggerUrl": "",  # Empty WebSocket URL
     }
     target = Target(target_data)
 
@@ -350,7 +354,7 @@ async def test_connect_to_first_page(mock_targets_response):
     mock_response.__enter__ = Mock(return_value=mock_response)
     mock_response.__exit__ = Mock(return_value=False)
 
-    with patch('urllib.request.urlopen', return_value=mock_response):
+    with patch("urllib.request.urlopen", return_value=mock_response):
         conn = await session.connect_to_first_page()
 
         # Verify connected to first page target
@@ -372,6 +376,6 @@ async def test_connect_to_first_page_no_pages():
     mock_response.__enter__ = Mock(return_value=mock_response)
     mock_response.__exit__ = Mock(return_value=False)
 
-    with patch('urllib.request.urlopen', return_value=mock_response):
+    with patch("urllib.request.urlopen", return_value=mock_response):
         with pytest.raises(CDPTargetNotFoundError, match="No page targets found"):
             await session.connect_to_first_page()

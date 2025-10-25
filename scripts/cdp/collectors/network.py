@@ -120,7 +120,9 @@ class NetworkCollector:
         # Unsubscribe from events
         self.connection.unsubscribe("Network.requestWillBeSent", self._on_request)
         self.connection.unsubscribe("Network.responseReceived", self._on_response)
-        self.connection.unsubscribe("Network.loadingFinished", self._on_loading_finished)
+        self.connection.unsubscribe(
+            "Network.loadingFinished", self._on_loading_finished
+        )
         self.connection.unsubscribe("Network.loadingFailed", self._on_loading_failed)
 
     async def _on_request(self, params: dict):
@@ -158,7 +160,9 @@ class NetworkCollector:
         response = params.get("response", {})
 
         # Get matching request
-        request_data = self._requests.get(request_id, {}) if request_id is not None else {}
+        request_data = (
+            self._requests.get(request_id, {}) if request_id is not None else {}
+        )
 
         # Build entry
         entry = {
@@ -177,8 +181,7 @@ class NetworkCollector:
             try:
                 # Fetch response body via CDP
                 body_result = await self.connection.execute_command(
-                    "Network.getResponseBody",
-                    {"requestId": request_id}
+                    "Network.getResponseBody", {"requestId": request_id}
                 )
                 if body_result.get("body"):
                     body = body_result["body"]
@@ -222,7 +225,9 @@ class NetworkCollector:
             params: CDP event parameters
         """
         request_id = params.get("requestId")
-        request_data = self._requests.get(request_id, {}) if request_id is not None else {}
+        request_data = (
+            self._requests.get(request_id, {}) if request_id is not None else {}
+        )
 
         # Log failure
         entry = {

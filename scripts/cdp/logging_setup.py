@@ -72,7 +72,7 @@ class TextFormatter(logging.Formatter):
         """Initialize with human-readable format string."""
         super().__init__(
             fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
 
 
@@ -80,7 +80,7 @@ def setup_logging(
     format_type: str = "text",
     level: Optional[str] = None,
     quiet: bool = False,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> None:
     """Configure logging for CDP CLI with specified format and level.
 
@@ -153,10 +153,7 @@ def get_logger(name: str) -> logging.Logger:
 
 
 def log_with_context(
-    logger: logging.Logger,
-    level: int,
-    message: str,
-    **extra_fields
+    logger: logging.Logger, level: int, message: str, **extra_fields
 ) -> None:
     """Log message with extra context fields (useful for JSON logging).
 
@@ -179,13 +176,7 @@ def log_with_context(
     if extra_fields:
         # Create LogRecord with extra dict for JSONFormatter
         record = logger.makeRecord(
-            logger.name,
-            level,
-            "(log_with_context)",
-            0,
-            message,
-            (),
-            None
+            logger.name, level, "(log_with_context)", 0, message, (), None
         )
         record.extra = extra_fields
         logger.handle(record)

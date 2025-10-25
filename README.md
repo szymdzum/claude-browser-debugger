@@ -306,7 +306,7 @@ python3 -m scripts.cdp.cli.main dom https://example.com \
   --output /tmp/dom.html
 ```
 
-> **Note**: Legacy Bash orchestrator (`scripts/legacy/debug-orchestrator.sh`) is deprecated. See `docs/guides/bash-to-python-migration.md` for migration guide.
+> **Note**: All functionality now provided by the Python CLI (`python3 -m scripts.cdp.cli.main` or `cdp` command after installation).
 
 **Uninstall**
 ```bash
@@ -328,7 +328,6 @@ rm -rf ~/.claude/skills/browser-debugger
   - `collectors/` – Console, network, and DOM monitoring
   - `cli/` – Unified command-line interface with subcommands
 - **`scripts/core/chrome-launcher.sh`** – Launches Chrome (headless/headed), manages isolated profiles for Chrome 136+, returns CDP WebSocket URL
-- **`scripts/legacy/`** – Deprecated Bash orchestrator and collectors (use Python CLI instead)
 
 ### Manual Testing
 

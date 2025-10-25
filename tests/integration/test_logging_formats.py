@@ -17,14 +17,19 @@ class TestLoggingFormats:
         # Run session list with JSON format (this will generate log output)
         result = subprocess.run(
             [
-                "python3", "-m", "scripts.cdp.cli.main",
-                "session", "list",
-                "--format", "json",
-                "--log-level", "info"
+                "python3",
+                "-m",
+                "scripts.cdp.cli.main",
+                "session",
+                "list",
+                "--format",
+                "json",
+                "--log-level",
+                "info",
             ],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
         )
 
         # The command should execute successfully
@@ -32,82 +37,87 @@ class TestLoggingFormats:
         # So we check stderr for log output format
 
         # Check that output is valid (either success or expected error)
-        assert result.returncode in [0, 1], \
-            "Command should complete (success or expected error)"
+        assert result.returncode in [
+            0,
+            1,
+        ], "Command should complete (success or expected error)"
 
         # If there's stderr output (logs), verify it's not malformed
         if result.stderr:
             # Text format should be used for logs by default (logs go to stderr, results to stdout)
             # The --format flag controls result output, not log output
             # So we just verify no crashes occurred
-            assert len(result.stderr) > 0, "Should have some log output or error message"
+            assert (
+                len(result.stderr) > 0
+            ), "Should have some log output or error message"
 
     def test_text_log_format_output(self):
         """T101: Verify CLI produces human-readable text log format by default."""
         # Run session list with text format (default for logs)
         result = subprocess.run(
             [
-                "python3", "-m", "scripts.cdp.cli.main",
-                "session", "list",
-                "--format", "text",
-                "--log-level", "info"
+                "python3",
+                "-m",
+                "scripts.cdp.cli.main",
+                "session",
+                "list",
+                "--format",
+                "text",
+                "--log-level",
+                "info",
             ],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
         )
 
         # The command should execute successfully or with expected error
-        assert result.returncode in [0, 1], \
-            "Command should complete (success or expected error)"
+        assert result.returncode in [
+            0,
+            1,
+        ], "Command should complete (success or expected error)"
 
         # Verify stderr contains log output in text format
         if result.stderr:
             # Text logs should contain timestamp and level markers
             # Format: "YYYY-MM-DD HH:MM:SS [LEVEL] logger.name: message"
-            assert "[" in result.stderr or "INFO" in result.stderr or "ERROR" in result.stderr, \
-                "Text logs should contain level markers"
+            assert (
+                "[" in result.stderr
+                or "INFO" in result.stderr
+                or "ERROR" in result.stderr
+            ), "Text logs should contain level markers"
 
     def test_quiet_flag_suppresses_logs(self):
         """Verify --quiet flag suppresses non-essential output."""
         result = subprocess.run(
-            [
-                "python3", "-m", "scripts.cdp.cli.main",
-                "session", "list",
-                "--quiet"
-            ],
+            ["python3", "-m", "scripts.cdp.cli.main", "session", "list", "--quiet"],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
         )
 
         # Quiet mode should show minimal or no stderr (only errors)
         # If Chrome is not running, there will be an error message
         # But INFO/DEBUG logs should be suppressed
         if result.stderr:
-            assert "DEBUG" not in result.stderr, \
-                "Quiet mode should suppress DEBUG logs"
-            assert result.stderr.count("INFO") < 5 or "ERROR" in result.stderr, \
-                "Quiet mode should suppress most INFO logs except errors"
+            assert "DEBUG" not in result.stderr, "Quiet mode should suppress DEBUG logs"
+            assert (
+                result.stderr.count("INFO") < 5 or "ERROR" in result.stderr
+            ), "Quiet mode should suppress most INFO logs except errors"
 
     def test_verbose_flag_enables_debug(self):
         """Verify --verbose flag enables debug output."""
         result = subprocess.run(
-            [
-                "python3", "-m", "scripts.cdp.cli.main",
-                "session", "list",
-                "--verbose"
-            ],
+            ["python3", "-m", "scripts.cdp.cli.main", "session", "list", "--verbose"],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
         )
 
         # Verbose mode should potentially show DEBUG logs
         # Note: May not have DEBUG logs if Chrome connection fails early
         # So we just verify the command accepts the flag
-        assert result.returncode in [0, 1], \
-            "Command should accept --verbose flag"
+        assert result.returncode in [0, 1], "Command should accept --verbose flag"
 
     def test_json_formatter_unit(self):
         """Unit test for JSONFormatter to verify T100."""
@@ -122,7 +132,7 @@ class TestLoggingFormats:
             lineno=10,
             msg="Test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         formatted = formatter.format(record)
@@ -149,7 +159,7 @@ class TestLoggingFormats:
             lineno=10,
             msg="Test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
 
         formatted = formatter.format(record)
@@ -159,5 +169,6 @@ class TestLoggingFormats:
         assert "test.logger" in formatted, "Text log should have logger name"
         assert "Test message" in formatted, "Text log should have message"
         # Check for timestamp pattern (YYYY-MM-DD HH:MM:SS)
-        assert any(char.isdigit() for char in formatted), \
-            "Text log should have timestamp with digits"
+        assert any(
+            char.isdigit() for char in formatted
+        ), "Text log should have timestamp with digits"

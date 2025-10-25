@@ -52,8 +52,10 @@ class TestOrchestrateHeadless:
             "orchestrate",
             "headless",
             url,
-            "--duration", "3",  # Short duration for testing
-            "--output-dir", str(tmp_path)
+            "--duration",
+            "3",  # Short duration for testing
+            "--output-dir",
+            str(tmp_path),
         )
 
         assert returncode == 0, f"Command failed: {stderr}"
@@ -81,9 +83,11 @@ class TestOrchestrateHeadless:
             "orchestrate",
             "headless",
             url,
-            "--duration", "3",
+            "--duration",
+            "3",
             "--include-console",
-            "--output-dir", str(tmp_path)
+            "--output-dir",
+            str(tmp_path),
         )
 
         assert returncode == 0, f"Command failed: {stderr}"
@@ -109,16 +113,21 @@ class TestOrchestrateHeadless:
             "orchestrate",
             "headless",
             url,
-            "--duration", "3",
-            "--summary", "json",
-            "--output-dir", str(tmp_path)
+            "--duration",
+            "3",
+            "--summary",
+            "json",
+            "--output-dir",
+            str(tmp_path),
         )
 
         assert returncode == 0, f"Command failed: {stderr}"
 
         # Verify JSON summary was created
         summary_files = list(tmp_path.glob("summary-*.json"))
-        assert len(summary_files) == 1, f"Expected 1 JSON summary, found {len(summary_files)}"
+        assert (
+            len(summary_files) == 1
+        ), f"Expected 1 JSON summary, found {len(summary_files)}"
 
         # Verify JSON is valid
         summary_data = json.loads(summary_files[0].read_text())
@@ -140,9 +149,12 @@ class TestOrchestrateHeadless:
             "orchestrate",
             "headless",
             url,
-            "--duration", "3",
-            "--summary", "both",
-            "--output-dir", str(tmp_path)
+            "--duration",
+            "3",
+            "--summary",
+            "both",
+            "--output-dir",
+            str(tmp_path),
         )
 
         assert returncode == 0, f"Command failed: {stderr}"
@@ -151,8 +163,12 @@ class TestOrchestrateHeadless:
         json_summaries = list(tmp_path.glob("summary-*.json"))
         text_summaries = list(tmp_path.glob("summary-*.txt"))
 
-        assert len(json_summaries) == 1, f"Expected 1 JSON summary, found {len(json_summaries)}"
-        assert len(text_summaries) == 1, f"Expected 1 text summary, found {len(text_summaries)}"
+        assert (
+            len(json_summaries) == 1
+        ), f"Expected 1 JSON summary, found {len(json_summaries)}"
+        assert (
+            len(text_summaries) == 1
+        ), f"Expected 1 text summary, found {len(text_summaries)}"
 
 
 class TestOrchestrateHeaded:
@@ -177,10 +193,7 @@ class TestOrchestrateHeaded:
         url = "https://example.com"
 
         returncode, stdout, stderr = run_cli(
-            "orchestrate",
-            "headed",
-            url,
-            "--output-dir", str(tmp_path)
+            "orchestrate", "headed", url, "--output-dir", str(tmp_path)
         )
 
         # Placeholder test - headed mode requires manual interaction
@@ -204,7 +217,8 @@ class TestOrchestrateHeaded:
             "headed",
             url,
             "--include-console",
-            "--output-dir", str(tmp_path)
+            "--output-dir",
+            str(tmp_path),
         )
 
         # Placeholder test

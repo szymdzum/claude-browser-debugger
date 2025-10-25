@@ -214,9 +214,6 @@ python3 -m scripts.cdp.cli.main --chrome-port 9223 orchestrate https://example.c
 - Manages isolated profiles for Chrome 136+ compatibility
 - Returns JSON contract with WebSocket URL and process info
 
-**Legacy Scripts** (`scripts/legacy/`):
-- Deprecated Bash orchestrator and collectors
-- See `docs/guides/bash-to-python-migration.md` for migration guide
 
 **For complete documentation, see [docs/guides/workflows.md](docs/guides/workflows.md)**
 

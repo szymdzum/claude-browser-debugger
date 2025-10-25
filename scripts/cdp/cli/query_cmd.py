@@ -89,7 +89,7 @@ async def query_handler_async(args: argparse.Namespace) -> int:
         return 0
 
     except CDPError as e:
-        if hasattr(args, 'config') and args.config.log_level.upper() == "DEBUG":
+        if hasattr(args, "config") and args.config.log_level.upper() == "DEBUG":
             raise
         print(f"Error: {e}", file=sys.stderr)
         if e.details.get("recovery"):
@@ -147,9 +147,7 @@ Examples:
 
     # Target selection (mutual exclusion)
     target_group = query_parser.add_mutually_exclusive_group()
-    target_group.add_argument(
-        "--target", help="Target ID to execute command in"
-    )
+    target_group.add_argument("--target", help="Target ID to execute command in")
     target_group.add_argument(
         "--url",
         help="URL pattern to match target (uses first match)",

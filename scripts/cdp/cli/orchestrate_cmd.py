@@ -50,20 +50,30 @@ async def orchestrate_handler_async(args: argparse.Namespace) -> int:
             )
 
         # Launch Chrome via chrome-launcher.sh
-        launcher_path = Path(__file__).parent.parent.parent.parent / "scripts" / "core" / "chrome-launcher.sh"
+        launcher_path = (
+            Path(__file__).parent.parent.parent.parent
+            / "scripts"
+            / "core"
+            / "chrome-launcher.sh"
+        )
 
         if not launcher_path.exists():
             raise CDPError(
                 f"chrome-launcher.sh not found at {launcher_path}",
-                {"recovery": "Ensure chrome-launcher.sh exists in scripts/core/"}
+                {"recovery": "Ensure chrome-launcher.sh exists in scripts/core/"},
             )
 
-        launcher_result = subprocess.run([
-            str(launcher_path),
-            f"--mode={args.mode}",
-            "--port=9222",
-            f"--url={args.url}"
-        ], capture_output=True, text=True, timeout=15)
+        launcher_result = subprocess.run(
+            [
+                str(launcher_path),
+                f"--mode={args.mode}",
+                "--port=9222",
+                f"--url={args.url}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
 
         if launcher_result.returncode != 0:
             # launcher writes debug to stderr, JSON to stdout
@@ -72,20 +82,24 @@ async def orchestrate_handler_async(args: argparse.Namespace) -> int:
                 error_data = json.loads(launcher_result.stdout)
                 raise CDPError(
                     error_data.get("message", "Chrome launcher failed"),
-                    {"recovery": error_data.get("recovery", "Check chrome-launcher.sh output")}
+                    {
+                        "recovery": error_data.get(
+                            "recovery", "Check chrome-launcher.sh output"
+                        )
+                    },
                 )
             except json.JSONDecodeError:
                 raise CDPError(
                     f"Chrome launcher failed: {launcher_result.stderr}",
-                    {"recovery": "Check chrome-launcher.sh output for details"}
+                    {"recovery": "Check chrome-launcher.sh output for details"},
                 )
 
         # Parse JSON from stdout (last line contains the JSON)
-        session_data = json.loads(launcher_result.stdout.strip().split('\n')[-1])
+        session_data = json.loads(launcher_result.stdout.strip().split("\n")[-1])
         if session_data.get("status") != "success":
             raise CDPError(
                 f"Chrome launch failed: {session_data.get('message')}",
-                {"recovery": session_data.get("recovery", "Unknown")}
+                {"recovery": session_data.get("recovery", "Unknown")},
             )
 
         chrome_pid = session_data["pid"]
@@ -104,8 +118,7 @@ async def orchestrate_handler_async(args: argparse.Namespace) -> int:
             if args.include_console:
                 console_path = output_dir / f"console-{session_id}.jsonl"
                 console_collector = ConsoleCollector(
-                    connection=conn,
-                    output_path=console_path
+                    connection=conn, output_path=console_path
                 )
                 await console_collector.start()
                 if not args.quiet:
@@ -120,7 +133,10 @@ async def orchestrate_handler_async(args: argparse.Namespace) -> int:
             # Stop console collector
             if console_collector:
                 await console_collector.stop()
-                if console_collector.output_path and console_collector.output_path.exists():
+                if (
+                    console_collector.output_path
+                    and console_collector.output_path.exists()
+                ):
                     artifacts["console"] = str(console_collector.output_path)
 
             # Extract DOM
@@ -129,8 +145,8 @@ async def orchestrate_handler_async(args: argparse.Namespace) -> int:
                 "Runtime.evaluate",
                 {
                     "expression": "document.documentElement.outerHTML",
-                    "returnByValue": True
-                }
+                    "returnByValue": True,
+                },
             )
 
             if dom_result.get("result", {}).get("value"):
@@ -145,7 +161,7 @@ async def orchestrate_handler_async(args: argparse.Namespace) -> int:
             "mode": args.mode,
             "duration": args.duration,
             "timestamp": timestamp,
-            "artifacts": artifacts
+            "artifacts": artifacts,
         }
 
         if args.summary in ["json", "both"]:
@@ -176,7 +192,7 @@ async def orchestrate_handler_async(args: argparse.Namespace) -> int:
         return 0
 
     except CDPError as e:
-        if hasattr(args, 'config') and args.config.log_level.upper() == "DEBUG":
+        if hasattr(args, "config") and args.config.log_level.upper() == "DEBUG":
             raise
         print(f"Error: {e}", file=sys.stderr)
         if e.details.get("recovery"):
@@ -184,7 +200,7 @@ async def orchestrate_handler_async(args: argparse.Namespace) -> int:
         return 1
 
     except Exception as e:
-        if hasattr(args, 'config') and args.config.log_level.upper() == "DEBUG":
+        if hasattr(args, "config") and args.config.log_level.upper() == "DEBUG":
             raise
         print(f"Unexpected error: {e}", file=sys.stderr)
         return 1

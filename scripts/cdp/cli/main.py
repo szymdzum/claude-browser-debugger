@@ -208,7 +208,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         format_type=config.log_format,
         level=config.log_level.upper() if isinstance(config.log_level, str) else "INFO",
         quiet=getattr(args, "quiet", False),
-        verbose=getattr(args, "verbose", False)
+        verbose=getattr(args, "verbose", False),
     )
 
     # Attach config to args for subcommands to access

@@ -45,7 +45,9 @@ class TestCDPConnectionLifecycle:
 
     async def test_initialization(self):
         """Test CDPConnection initialization with valid parameters."""
-        conn = CDPConnection("ws://localhost:9222/test", timeout=15.0, max_size=1_000_000)
+        conn = CDPConnection(
+            "ws://localhost:9222/test", timeout=15.0, max_size=1_000_000
+        )
         assert conn.ws_url == "ws://localhost:9222/test"
         assert conn.timeout == 15.0
         assert conn.max_size == 1_000_000
@@ -71,13 +73,13 @@ class TestCDPConnectionLifecycle:
 
         assert conn.is_connected
         mock_connect.assert_called_once_with(
-            "ws://localhost:9222/test",
-            max_size=2_097_152
+            "ws://localhost:9222/test", max_size=2_097_152
         )
 
     @patch("scripts.cdp.connection.websockets.connect")
     async def test_connect_failure(self, mock_connect):
         """Test connection failure raises ConnectionFailedError."""
+
         async def async_connect_fail(*args, **kwargs):
             raise Exception("Connection refused")
 
@@ -209,13 +211,16 @@ class TestEventSubscription:
         mock_connect.side_effect = async_connect
 
         async with CDPConnection("ws://localhost:9222/test") as conn:
+
             async def event_handler(params: dict):
                 pass
 
             conn.subscribe("Console.messageAdded", event_handler)
             conn.unsubscribe("Console.messageAdded", event_handler)
 
-            assert event_handler not in conn._event_handlers.get("Console.messageAdded", [])
+            assert event_handler not in conn._event_handlers.get(
+                "Console.messageAdded", []
+            )
 
     @patch("scripts.cdp.connection.websockets.connect")
     async def test_multiple_handlers_for_same_event(self, mock_connect):
@@ -228,6 +233,7 @@ class TestEventSubscription:
         mock_connect.side_effect = async_connect
 
         async with CDPConnection("ws://localhost:9222/test") as conn:
+
             async def handler1(params: dict):
                 pass
 
@@ -256,8 +262,12 @@ class TestDomainTracking:
     async def test_enabled_domains_tracking_initialization(self):
         """Verify _enabled_domains set is initialized empty."""
         conn = CDPConnection("ws://localhost:9222/test")
-        assert hasattr(conn, "_enabled_domains"), "CDPConnection should have _enabled_domains attribute"
-        assert isinstance(conn._enabled_domains, set), "_enabled_domains should be a set"
+        assert hasattr(
+            conn, "_enabled_domains"
+        ), "CDPConnection should have _enabled_domains attribute"
+        assert isinstance(
+            conn._enabled_domains, set
+        ), "_enabled_domains should be a set"
         assert len(conn._enabled_domains) == 0, "_enabled_domains should start empty"
 
 
@@ -274,5 +284,9 @@ class TestReconnectWithBackoff:
     async def test_reconnect_with_backoff_method_exists(self):
         """Verify reconnect_with_backoff method exists."""
         conn = CDPConnection("ws://localhost:9222/test")
-        assert hasattr(conn, "reconnect_with_backoff"), "CDPConnection should have reconnect_with_backoff method"
-        assert callable(conn.reconnect_with_backoff), "reconnect_with_backoff should be callable"
+        assert hasattr(
+            conn, "reconnect_with_backoff"
+        ), "CDPConnection should have reconnect_with_backoff method"
+        assert callable(
+            conn.reconnect_with_backoff
+        ), "reconnect_with_backoff should be callable"

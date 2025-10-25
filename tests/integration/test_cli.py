@@ -55,7 +55,10 @@ class TestCLIHelpText:
         returncode, stdout, stderr = run_cli("session", "--help")
 
         assert returncode == 0
-        assert "Discover and filter Chrome targets" in stdout or "List and inspect Chrome targets" in stdout
+        assert (
+            "Discover and filter Chrome targets" in stdout
+            or "List and inspect Chrome targets" in stdout
+        )
         assert "--type" in stdout
         assert "--url" in stdout
         assert "browser-debugger session list" in stdout
@@ -128,10 +131,7 @@ class TestCLIMutualExclusion:
     def test_eval_target_url_mutual_exclusion(self):
         """Test eval command rejects both --target and --url."""
         returncode, stdout, stderr = run_cli(
-            "eval",
-            "--target", "page-123",
-            "--url", "example.com",
-            "document.title"
+            "eval", "--target", "page-123", "--url", "example.com", "document.title"
         )
 
         assert returncode != 0
@@ -142,9 +142,12 @@ class TestCLIMutualExclusion:
         returncode, stdout, stderr = run_cli(
             "dom",
             "dump",
-            "--target", "page-123",
-            "--url", "example.com",
-            "--output", "/tmp/test.html"
+            "--target",
+            "page-123",
+            "--url",
+            "example.com",
+            "--output",
+            "/tmp/test.html",
         )
 
         assert returncode != 0
@@ -155,9 +158,12 @@ class TestCLIMutualExclusion:
         returncode, stdout, stderr = run_cli(
             "console",
             "stream",
-            "--target", "page-123",
-            "--url", "example.com",
-            "--duration", "10"
+            "--target",
+            "page-123",
+            "--url",
+            "example.com",
+            "--duration",
+            "10",
         )
 
         assert returncode != 0
@@ -168,9 +174,12 @@ class TestCLIMutualExclusion:
         returncode, stdout, stderr = run_cli(
             "network",
             "record",
-            "--target", "page-123",
-            "--url", "example.com",
-            "--duration", "10"
+            "--target",
+            "page-123",
+            "--url",
+            "example.com",
+            "--duration",
+            "10",
         )
 
         assert returncode != 0
@@ -180,9 +189,12 @@ class TestCLIMutualExclusion:
         """Test query command rejects both --target and --url."""
         returncode, stdout, stderr = run_cli(
             "query",
-            "--target", "page-123",
-            "--url", "example.com",
-            "--method", "Runtime.evaluate"
+            "--target",
+            "page-123",
+            "--url",
+            "example.com",
+            "--method",
+            "Runtime.evaluate",
         )
 
         assert returncode != 0
@@ -190,12 +202,7 @@ class TestCLIMutualExclusion:
 
     def test_global_quiet_verbose_mutual_exclusion(self):
         """Test --quiet and --verbose are mutually exclusive."""
-        returncode, stdout, stderr = run_cli(
-            "session",
-            "list",
-            "--quiet",
-            "--verbose"
-        )
+        returncode, stdout, stderr = run_cli("session", "list", "--quiet", "--verbose")
 
         assert returncode != 0
         assert "not allowed with argument" in stderr or "mutually exclusive" in stderr
@@ -214,7 +221,10 @@ class TestCLIMissingArguments:
 
         assert returncode != 0
         # argparse should show help or error
-        assert "required" in stderr.lower() or "the following arguments are required" in stderr.lower()
+        assert (
+            "required" in stderr.lower()
+            or "the following arguments are required" in stderr.lower()
+        )
 
     def test_eval_missing_expression(self):
         """Test eval command requires expression argument."""
@@ -291,24 +301,36 @@ class TestCLICommandsWithChrome:
         import time
 
         # Use chrome-launcher.sh to start fresh Chrome
-        launcher_path = Path(__file__).parent.parent.parent / "scripts" / "core" / "chrome-launcher.sh"
+        launcher_path = (
+            Path(__file__).parent.parent.parent
+            / "scripts"
+            / "core"
+            / "chrome-launcher.sh"
+        )
 
         session = None
         try:
             # Run chrome-launcher.sh (stderr contains debug messages, ignore them)
-            result = subprocess.run([
-                str(launcher_path),
-                "--mode=headless",
-                "--port=9222",
-                "--url=about:blank"
-            ], timeout=10, capture_output=True, text=True)
+            result = subprocess.run(
+                [
+                    str(launcher_path),
+                    "--mode=headless",
+                    "--port=9222",
+                    "--url=about:blank",
+                ],
+                timeout=10,
+                capture_output=True,
+                text=True,
+            )
 
             # Parse JSON from stdout (last line)
             session = json.loads(result.stdout)
 
             # Verify Chrome started
             if session.get("status") != "success":
-                pytest.skip(f"Chrome launcher failed: {session.get('message', 'Unknown error')}")
+                pytest.skip(
+                    f"Chrome launcher failed: {session.get('message', 'Unknown error')}"
+                )
 
             # Brief pause to ensure Chrome is fully ready
             time.sleep(0.5)
@@ -332,7 +354,10 @@ class TestCLICommandsWithChrome:
                         time.sleep(0.3)  # Brief pause for cleanup
                     except Exception as e:
                         # Log but don't fail cleanup
-                        print(f"Warning: Failed to kill Chrome PID {pid}: {e}", file=sys.stderr)
+                        print(
+                            f"Warning: Failed to kill Chrome PID {pid}: {e}",
+                            file=sys.stderr,
+                        )
 
     @pytest.mark.integration
     def test_session_list_with_chrome(self, chrome_session):
@@ -347,6 +372,7 @@ class TestCLICommandsWithChrome:
 
         # Parse JSON output
         import json
+
         targets = json.loads(stdout)
 
         assert isinstance(targets, list)
@@ -366,14 +392,13 @@ class TestCLICommandsWithChrome:
         Verifies --type flag filters targets correctly.
         """
         returncode, stdout, stderr = run_cli(
-            "session", "list",
-            "--type", "page",
-            "--format", "json"
+            "session", "list", "--type", "page", "--format", "json"
         )
 
         assert returncode == 0, f"Command failed: {stderr}"
 
         import json
+
         targets = json.loads(stdout)
 
         # All targets should be page type
@@ -398,16 +423,13 @@ class TestCLICommandsWithChrome:
 
         Verifies JavaScript execution via Runtime.evaluate.
         """
-        returncode, stdout, stderr = run_cli(
-            "eval",
-            "2 + 2",
-            "--format", "json"
-        )
+        returncode, stdout, stderr = run_cli("eval", "2 + 2", "--format", "json")
 
         assert returncode == 0, f"Command failed: {stderr}"
 
         # Parse JSON output
         import json
+
         result = json.loads(stdout)
 
         # Should contain CDP response
@@ -421,14 +443,13 @@ class TestCLICommandsWithChrome:
         Verifies eval can access page DOM.
         """
         returncode, stdout, stderr = run_cli(
-            "eval",
-            "document.title",
-            "--format", "json"
+            "eval", "document.title", "--format", "json"
         )
 
         assert returncode == 0, f"Command failed: {stderr}"
 
         import json
+
         result = json.loads(stdout)
 
         # Should have result value
@@ -445,8 +466,7 @@ class TestCLICommandsWithChrome:
         output_file = tmp_path / "test_dom.html"
 
         returncode, stdout, stderr = run_cli(
-            "dom", "dump",
-            "--output", str(output_file)
+            "dom", "dump", "--output", str(output_file)
         )
 
         assert returncode == 0, f"Command failed: {stderr}"
@@ -470,9 +490,12 @@ class TestCLICommandsWithChrome:
         output_file = tmp_path / "console.jsonl"
 
         returncode, stdout, stderr = run_cli(
-            "console", "stream",
-            "--duration", "2",  # Short duration for testing
-            "--output", str(output_file)
+            "console",
+            "stream",
+            "--duration",
+            "2",  # Short duration for testing
+            "--output",
+            str(output_file),
         )
 
         assert returncode == 0, f"Command failed: {stderr}"
@@ -491,9 +514,12 @@ class TestCLICommandsWithChrome:
         output_file = tmp_path / "network.jsonl"
 
         returncode, stdout, stderr = run_cli(
-            "network", "record",
-            "--duration", "2",  # Short duration for testing
-            "--output", str(output_file) if output_file else ""
+            "network",
+            "record",
+            "--duration",
+            "2",  # Short duration for testing
+            "--output",
+            str(output_file) if output_file else "",
         )
 
         # May not be fully implemented yet, but should not crash
@@ -508,14 +534,18 @@ class TestCLICommandsWithChrome:
         """
         returncode, stdout, stderr = run_cli(
             "query",
-            "--method", "Runtime.evaluate",
-            "--params", '{"expression":"1+1","returnByValue":true}',
-            "--format", "json"
+            "--method",
+            "Runtime.evaluate",
+            "--params",
+            '{"expression":"1+1","returnByValue":true}',
+            "--format",
+            "json",
         )
 
         assert returncode == 0, f"Command failed: {stderr}"
 
         import json
+
         result = json.loads(stdout)
 
         # Should contain CDP response

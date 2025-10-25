@@ -23,42 +23,45 @@ This document provides complete workflow examples for using the browser-debugger
 
 ### One-Command Orchestrated Capture
 
-The `debug-orchestrator.sh` script coordinates Chrome, CDP collectors, and post-run summaries.
+The Python CDP CLI `orchestrate` subcommand coordinates Chrome, CDP collectors, and post-run summaries.
 
 ```bash
-./scripts/core/debug-orchestrator.sh "https://example.com/login" 20 /tmp/example.log \
-  --include-console --summary=both --idle=3
+python3 -m scripts.cdp.cli.main orchestrate headless https://example.com/login \
+  --duration 20 --include-console --summary both --output-dir /tmp
 ```
 
 **What you get:**
-- Network stream written to `/tmp/example.log`
-- Console stream written to `/tmp/example-console.log`
-- Text and JSON summaries printed at the end
+- Network stream written to `/tmp/network-<timestamp>.jsonl`
+- Console stream written to `/tmp/console-<timestamp>.jsonl` (if --include-console)
+- Text and JSON summaries generated in `/tmp`
 - Automatic Chrome startup/cleanup on port 9222
+- Automatic reconnection on Chrome crash
 
 ### Useful Flags
 
-- `--idle=<seconds>`: Stop capture after the page goes quiet (applies to both console and network collectors)
+- `--duration SECONDS`: Session duration (default: 15)
 - `--include-console`: Capture console events alongside network data
-- `--console-log=PATH`: Direct console output to a custom file
-- `--filter="<substring>"`: Switch to `cdp-network-with-body.py` collector and persist matching response bodies
-- `--summary=text|json|both`: Control summarizer output format
+- `--summary {text,json,both}`: Control summarizer output format (default: text)
+- `--output-dir PATH`: Directory for output files (default: /tmp)
+- `--chrome-port PORT`: Chrome debugging port (default: 9222)
 
 ### Example: Full Telemetry Capture
 
 ```bash
-./scripts/core/debug-orchestrator.sh "https://api.example.com/dashboard" 30 /tmp/dashboard.log \
+python3 -m scripts.cdp.cli.main orchestrate headless https://api.example.com/dashboard \
+  --duration 30 \
   --include-console \
-  --idle=5 \
-  --summary=both \
-  --filter="api/v1"
+  --summary both \
+  --output-dir /tmp/dashboard
 ```
 
 **Output:**
-- `/tmp/dashboard.log` - Network activity with response bodies for URLs containing "api/v1"
-- `/tmp/dashboard-console.log` - All console logs
-- Text summary with request counts, status codes, and error messages
-- JSON summary for programmatic processing
+- `/tmp/dashboard/network-<timestamp>.jsonl` - Network activity
+- `/tmp/dashboard/console-<timestamp>.jsonl` - All console logs
+- `/tmp/dashboard/summary-<timestamp>.txt` - Text summary with request counts, status codes, and error messages
+- `/tmp/dashboard/summary-<timestamp>.json` - JSON summary for programmatic processing
+
+**Note:** Response body filtering is now controlled via the `network` subcommand's `--include-bodies` flag when using manual workflows.
 
 ---
 
@@ -69,17 +72,18 @@ The `debug-orchestrator.sh` script coordinates Chrome, CDP collectors, and post-
 ### Quick Start: Open Visible Browser
 
 ```bash
-./scripts/core/debug-orchestrator.sh "http://localhost:3000/signin" \
-  --mode=headed \
+python3 -m scripts.cdp.cli.main orchestrate headed http://localhost:3000/signin \
+  --duration 600 \
   --include-console
 ```
 
 **What happens:**
 - Opens a **visible Chrome window** showing the page
-- **Stays open indefinitely** - no automatic timeout (close manually when done)
+- **Runs for specified duration** (600 seconds = 10 minutes in this example)
 - You can **type, click, and interact** normally
 - Console logs and network activity are captured in real-time
 - Uses persistent profile at `$HOME/.chrome-debug-profile`
+- Automatic reconnection if Chrome crashes
 
 **Use cases:**
 - Testing form interactions (login, signup, checkout)
@@ -87,21 +91,21 @@ The `debug-orchestrator.sh` script coordinates Chrome, CDP collectors, and post-
 - Watching real-time form validation
 - Testing workflows that need human interaction
 
-**Note:** For headed mode, do NOT use `--idle` timeout unless you specifically want auto-close behavior. The browser should stay open for interactive debugging.
+**Note:** Set `--duration` to a value longer than your expected interaction time. The session will auto-close when the duration expires.
 
 ### Example: Checkout Flow Debugging
 
 ```bash
-./scripts/core/debug-orchestrator.sh "http://localhost:3000/checkout" 20 /tmp/checkout.log \
-  --mode=headed --include-console --summary=both
+python3 -m scripts.cdp.cli.main orchestrate headed http://localhost:3000/checkout \
+  --duration 600 --include-console --summary both --output-dir /tmp/checkout
 ```
 
 **Workflow:**
 1. Chrome window opens at checkout page
-2. Manually interact: add items, fill forms, click buttons
-3. Console logs captured to `/tmp/checkout-console.log`
-4. Network activity captured to `/tmp/checkout.log`
-5. Close Chrome manually when done
+2. Manually interact: add items, fill forms, click buttons (within 10 minutes)
+3. Console logs captured to `/tmp/checkout/console-<timestamp>.jsonl`
+4. Network activity captured to `/tmp/checkout/network-<timestamp>.jsonl`
+5. Session auto-closes after 600 seconds
 6. Review summaries for errors or unexpected API calls
 
 ---
@@ -118,13 +122,19 @@ This workflow enables debugging scenarios where you need to:
 
 ### Phase 1: Launch Chrome with Debugging
 
+**Option A: Using Python CLI (Recommended)**
 ```bash
-./scripts/core/debug-orchestrator.sh "http://localhost:3000/signin" \
-  --mode=headed \
+python3 -m scripts.cdp.cli.main orchestrate headed http://localhost:3000/signin \
+  --duration 600 \
   --include-console
 ```
 
-**Output:**
+**Option B: Using Chrome Launcher Directly (For Manual Control)**
+```bash
+./scripts/core/chrome-launcher.sh "http://localhost:3000/signin" --mode=headed
+```
+
+**Output (Chrome Launcher):**
 ```json
 {
   "chrome_version": "136.0.6786.0",
@@ -139,7 +149,7 @@ This workflow enables debugging scenarios where you need to:
 **What happens:**
 - Visible Chrome window opens at the specified URL
 - CDP debugging enabled on port 9222
-- Browser stays open indefinitely (no timeout)
+- Browser stays open for interaction
 - Returns WebSocket URL for later DOM extraction
 
 ### Phase 2: User Interaction
@@ -272,71 +282,69 @@ Reference: DOM saved at /tmp/live-dom.html
 
 **Use case:** Stop debugging sessions cleanly with automatic artifact preservation
 
-The orchestrator now supports graceful cleanup when you press **Ctrl+C (SIGINT)** during a session. This ensures all captured data is preserved and resources are released properly.
+The Python CDP CLI automatically handles cleanup when sessions end (either naturally or via Ctrl+C). This ensures all captured data is preserved and resources are released properly.
 
 ### How It Works
 
-When you press Ctrl+C during an active session:
+When a session ends (timeout or Ctrl+C):
 
-1. **Monitors stopped gracefully** - Network and console monitors receive SIGTERM
-2. **Final DOM extracted** - Current page state captured via CDP
-3. **Summary generated** - Text summary of captured data created
-4. **Chrome terminated** - Browser process stopped cleanly
-5. **All artifacts preserved** - File locations displayed for review
+1. **Monitors stopped gracefully** - Network and console collectors shut down cleanly
+2. **Summary generated** - Text/JSON summary of captured data created
+3. **Chrome terminated** - Browser process stopped cleanly (if managed by orchestrate)
+4. **All artifacts preserved** - File locations displayed for review
 
-### Example: Early Session Termination
+### Example: Session Termination
 
 ```bash
 # Start a session
-./scripts/core/debug-orchestrator.sh "http://localhost:3000/dashboard" \
-  --mode=headed --include-console
+python3 -m scripts.cdp.cli.main orchestrate headed http://localhost:3000/dashboard \
+  --duration 600 --include-console --summary both --output-dir /tmp/session
 
 # (Interact with the page...)
-# Press Ctrl+C when ready to stop
+# Press Ctrl+C when ready to stop, or wait for 600s timeout
 
 # Output:
-🧹 Cleaning up session...
-   Stopping network monitor (PID: 12345)...
-   Stopping console monitor (PID: 12346)...
-   Extracting final DOM state...
-   ✅ DOM saved to: /tmp/page-debug-20251024-143522-12345-dom.html
-   Generating summary report...
-   ✅ Summary saved to: /tmp/page-debug-20251024-143522-12345-summary.txt
-   Stopping Chrome (PID: 12347)...
+Session ended. Cleaning up...
+Stopping network monitor...
+Stopping console monitor...
+Generating summary report...
 
-📁 Session artifacts preserved:
-   Network log: /tmp/page-debug-20251024-143522-12345-network.log
-   Console log: /tmp/page-debug-20251024-143522-12345-console.log
-   Final DOM: /tmp/page-debug-20251024-143522-12345-dom.html
-   Summary: /tmp/page-debug-20251024-143522-12345-summary.txt
+Session artifacts saved:
+   Network log: /tmp/session/network-20251025-143522.jsonl
+   Console log: /tmp/session/console-20251025-143522.jsonl
+   Summary (text): /tmp/session/summary-20251025-143522.txt
+   Summary (JSON): /tmp/session/summary-20251025-143522.json
 
-   💡 Note: Persistent profile kept at: /Users/user/.chrome-debug-profile
-   To clean: rm -rf /Users/user/.chrome-debug-profile
+Persistent profile kept at: /Users/user/.chrome-debug-profile
+To clean: rm -rf /Users/user/.chrome-debug-profile
 
-✅ Session cleanup complete!
+Session cleanup complete!
 ```
 
 ### Unique Session File Naming
 
-All output files now include a unique session ID (timestamp + PID) to prevent conflicts when running concurrent sessions:
+All output files include timestamps to prevent conflicts when running concurrent sessions:
 
 **File naming pattern:**
 ```
-{base}-{YYYYMMDD-HHMMSS-PID}-{type}.{ext}
+{type}-{YYYYMMDD-HHMMSS}.{ext}
 ```
 
 **Examples:**
 ```bash
 # Single session
-./scripts/core/debug-orchestrator.sh "http://localhost:3000" 30 /tmp/debug.log
-# Creates: /tmp/debug-20251024-143522-12345-network.log
-#          /tmp/debug-20251024-143522-12345-console.log (if --include-console)
+python3 -m scripts.cdp.cli.main orchestrate headless http://localhost:3000 \
+  --duration 30 --output-dir /tmp
+# Creates: /tmp/network-20251025-143522.jsonl
+#          /tmp/console-20251025-143522.jsonl (if --include-console)
 
-# Concurrent sessions (no conflicts)
-./scripts/core/debug-orchestrator.sh "http://example.com/login" 30 /tmp/test.log &
-./scripts/core/debug-orchestrator.sh "http://example.com/signup" 30 /tmp/test.log &
-# Creates: /tmp/test-20251024-143522-12345-network.log
-#          /tmp/test-20251024-143528-12678-network.log
+# Concurrent sessions (no conflicts due to different timestamps)
+python3 -m scripts.cdp.cli.main orchestrate headless http://example.com/login \
+  --duration 30 --output-dir /tmp &
+python3 -m scripts.cdp.cli.main orchestrate headless http://example.com/signup \
+  --duration 30 --output-dir /tmp &
+# Creates: /tmp/network-20251025-143522.jsonl
+#          /tmp/network-20251025-143528.jsonl
 ```
 
 ### Benefits
@@ -345,6 +353,7 @@ All output files now include a unique session ID (timestamp + PID) to prevent co
 - **Clean resource management** - No orphaned Chrome processes or monitors
 - **Concurrent-safe** - Multiple sessions can run without file conflicts
 - **Immediate feedback** - File locations displayed for quick review
+- **Automatic reconnection** - Chrome crash recovery with domain replay
 
 ---
 

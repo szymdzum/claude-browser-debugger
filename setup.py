@@ -53,7 +53,6 @@ setup(
     package_data={
         "scripts": [
             "core/*.sh",
-            "collectors/*.py",
             "utilities/*.sh",
         ],
     },

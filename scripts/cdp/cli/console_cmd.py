@@ -56,7 +56,11 @@ async def console_stream_handler_async(args: argparse.Namespace) -> int:
                 # Create console collector
                 collector = ConsoleCollector(
                     connection=conn,
-                    output_path=Path(args.output) if hasattr(args, "output") and args.output else None,
+                    output_path=(
+                        Path(args.output)
+                        if hasattr(args, "output") and args.output
+                        else None
+                    ),
                     level_filter=args.level if hasattr(args, "level") else None,
                 )
 
@@ -85,7 +89,11 @@ async def console_stream_handler_async(args: argparse.Namespace) -> int:
             # Create console collector
             collector = ConsoleCollector(
                 connection=conn,
-                output_path=Path(args.output) if hasattr(args, "output") and args.output else None,
+                output_path=(
+                    Path(args.output)
+                    if hasattr(args, "output") and args.output
+                    else None
+                ),
                 level_filter=args.level if hasattr(args, "level") else None,
             )
 
@@ -108,7 +116,7 @@ async def console_stream_handler_async(args: argparse.Namespace) -> int:
         return 0
 
     except CDPError as e:
-        if hasattr(args, 'config') and args.config.log_level.upper() == "DEBUG":
+        if hasattr(args, "config") and args.config.log_level.upper() == "DEBUG":
             raise
         print(f"Error: {e}", file=sys.stderr)
         if e.details.get("recovery"):
@@ -173,9 +181,7 @@ Examples:
 
     # Target selection (mutual exclusion)
     target_group = console_parser.add_mutually_exclusive_group()
-    target_group.add_argument(
-        "--target", help="Target ID to monitor console logs from"
-    )
+    target_group.add_argument("--target", help="Target ID to monitor console logs from")
     target_group.add_argument(
         "--url",
         help="URL pattern to match target (uses first match)",

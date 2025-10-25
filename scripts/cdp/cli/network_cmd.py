@@ -56,8 +56,16 @@ async def network_record_handler_async(args: argparse.Namespace) -> int:
                 # Create network collector
                 collector = NetworkCollector(
                     connection=conn,
-                    output_path=Path(args.output) if hasattr(args, "output") and args.output else None,
-                    include_bodies=args.include_bodies if hasattr(args, "include_bodies") else False,
+                    output_path=(
+                        Path(args.output)
+                        if hasattr(args, "output") and args.output
+                        else None
+                    ),
+                    include_bodies=(
+                        args.include_bodies
+                        if hasattr(args, "include_bodies")
+                        else False
+                    ),
                 )
 
                 async with collector:
@@ -83,8 +91,14 @@ async def network_record_handler_async(args: argparse.Namespace) -> int:
             # Create network collector
             collector = NetworkCollector(
                 connection=conn,
-                output_path=Path(args.output) if hasattr(args, "output") and args.output else None,
-                include_bodies=args.include_bodies if hasattr(args, "include_bodies") else False,
+                output_path=(
+                    Path(args.output)
+                    if hasattr(args, "output") and args.output
+                    else None
+                ),
+                include_bodies=(
+                    args.include_bodies if hasattr(args, "include_bodies") else False
+                ),
             )
 
             async with collector:
@@ -105,7 +119,7 @@ async def network_record_handler_async(args: argparse.Namespace) -> int:
         return 0
 
     except CDPError as e:
-        if hasattr(args, 'config') and args.config.log_level.upper() == "DEBUG":
+        if hasattr(args, "config") and args.config.log_level.upper() == "DEBUG":
             raise
         print(f"Error: {e}", file=sys.stderr)
         if e.details.get("recovery"):

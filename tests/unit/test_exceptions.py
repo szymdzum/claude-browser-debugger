@@ -51,7 +51,7 @@ class TestConnectionErrors:
         """Test ConnectionFailedError for initial connection failures."""
         error = ConnectionFailedError(
             "Failed to connect",
-            details={"url": "ws://localhost:9222", "reason": "timeout"}
+            details={"url": "ws://localhost:9222", "reason": "timeout"},
         )
         assert isinstance(error, CDPConnectionError)
         assert "Failed to connect" in str(error)
@@ -71,9 +71,7 @@ class TestCommandErrors:
     def test_command_error_with_method(self):
         """Test CDPCommandError with method and error code."""
         error = CDPCommandError(
-            "Invalid expression",
-            method="Runtime.evaluate",
-            error_code=-32000
+            "Invalid expression", method="Runtime.evaluate", error_code=-32000
         )
         assert isinstance(error, CDPError)
         assert error.method == "Runtime.evaluate"
@@ -84,7 +82,7 @@ class TestCommandErrors:
         error = CommandFailedError(
             "Cannot find context with specified id",
             method="Runtime.evaluate",
-            error_code=-32000
+            error_code=-32000,
         )
         assert isinstance(error, CDPCommandError)
         assert "Cannot find context" in str(error)
@@ -94,7 +92,7 @@ class TestCommandErrors:
         error = InvalidCommandError(
             "Missing required parameter",
             method="Page.navigate",
-            details={"missing": "url"}
+            details={"missing": "url"},
         )
         assert isinstance(error, CDPCommandError)
         assert "Missing required parameter" in str(error)
@@ -113,9 +111,7 @@ class TestTimeoutError:
     def test_timeout_error_with_details(self):
         """Test CDPTimeoutError with method and timeout duration."""
         error = CDPTimeoutError(
-            "Timeout occurred",
-            command_method="Runtime.evaluate",
-            timeout=30.0
+            "Timeout occurred", command_method="Runtime.evaluate", timeout=30.0
         )
         assert "Runtime.evaluate" in str(error)
         assert "30" in str(error)
@@ -129,10 +125,7 @@ class TestTargetNotFoundError:
 
     def test_target_not_found_by_id(self):
         """Test CDPTargetNotFoundError with target ID."""
-        error = CDPTargetNotFoundError(
-            "Target not found",
-            target_id="ABC123"
-        )
+        error = CDPTargetNotFoundError("Target not found", target_id="ABC123")
         assert isinstance(error, CDPError)
         assert "ABC123" in str(error)
         assert error.target_id == "ABC123"
@@ -140,8 +133,7 @@ class TestTargetNotFoundError:
     def test_target_not_found_by_url(self):
         """Test CDPTargetNotFoundError with URL pattern."""
         error = CDPTargetNotFoundError(
-            "No matching target",
-            url_pattern="https://example.com"
+            "No matching target", url_pattern="https://example.com"
         )
         assert "example.com" in str(error)
         assert error.url_pattern == "https://example.com"

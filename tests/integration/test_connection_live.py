@@ -22,7 +22,9 @@ def chrome_session():
     Automatically kills Chrome after test completes.
     """
     # Path to chrome-launcher.sh (relative to repository root)
-    launcher_path = Path(__file__).parent.parent.parent / "scripts" / "core" / "chrome-launcher.sh"
+    launcher_path = (
+        Path(__file__).parent.parent.parent / "scripts" / "core" / "chrome-launcher.sh"
+    )
 
     if not launcher_path.exists():
         pytest.skip(f"chrome-launcher.sh not found at {launcher_path}")
@@ -30,17 +32,16 @@ def chrome_session():
     # Launch Chrome with about:blank
     try:
         output = subprocess.check_output(
-            [
-                str(launcher_path),
-                "--mode=headless",
-                "--port=9222",
-                "--url=about:blank"
-            ],
+            [str(launcher_path), "--mode=headless", "--port=9222", "--url=about:blank"],
             stderr=subprocess.PIPE,
-            timeout=10
+            timeout=10,
         )
         session = json.loads(output)
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, json.JSONDecodeError) as e:
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        json.JSONDecodeError,
+    ) as e:
         pytest.skip(f"Failed to launch Chrome: {e}")
 
     yield session
@@ -90,15 +91,13 @@ async def test_runtime_evaluate_command(chrome_session):
     async with CDPConnection(ws_url) as conn:
         # Simple expression
         result = await conn.execute_command(
-            "Runtime.evaluate",
-            {"expression": "1 + 1", "returnByValue": True}
+            "Runtime.evaluate", {"expression": "1 + 1", "returnByValue": True}
         )
         assert result["result"]["value"] == 2
 
         # Document title (should be empty for about:blank)
         result = await conn.execute_command(
-            "Runtime.evaluate",
-            {"expression": "document.title", "returnByValue": True}
+            "Runtime.evaluate", {"expression": "document.title", "returnByValue": True}
         )
         assert result["result"]["value"] == ""
 
@@ -124,8 +123,7 @@ async def test_console_event_subscription(chrome_session):
 
         # Trigger console.log via JavaScript
         await conn.execute_command(
-            "Runtime.evaluate",
-            {"expression": "console.log('Test message')"}
+            "Runtime.evaluate", {"expression": "console.log('Test message')"}
         )
 
         # Wait for event to be received
@@ -147,16 +145,13 @@ async def test_multiple_commands_sequential(chrome_session):
     async with CDPConnection(ws_url) as conn:
         # Execute multiple commands
         result1 = await conn.execute_command(
-            "Runtime.evaluate",
-            {"expression": "1 + 1", "returnByValue": True}
+            "Runtime.evaluate", {"expression": "1 + 1", "returnByValue": True}
         )
         result2 = await conn.execute_command(
-            "Runtime.evaluate",
-            {"expression": "2 * 3", "returnByValue": True}
+            "Runtime.evaluate", {"expression": "2 * 3", "returnByValue": True}
         )
         result3 = await conn.execute_command(
-            "Runtime.evaluate",
-            {"expression": "10 - 5", "returnByValue": True}
+            "Runtime.evaluate", {"expression": "10 - 5", "returnByValue": True}
         )
 
         assert result1["result"]["value"] == 2
@@ -174,11 +169,7 @@ async def test_command_timeout_with_real_chrome(chrome_session):
         # This should timeout because we're using a very short timeout
         # and sending invalid method that Chrome won't respond to properly
         with pytest.raises((CDPTimeoutError, CommandFailedError)):
-            await conn.execute_command(
-                "NonExistent.invalidMethod",
-                {},
-                timeout=0.1
-            )
+            await conn.execute_command("NonExistent.invalidMethod", {}, timeout=0.1)
 
 
 @pytest.mark.integration
@@ -213,13 +204,13 @@ async def test_large_dom_extraction(chrome_session):
                 "expression": """
                     document.body.innerHTML = '<div>' + 'x'.repeat(10000) + '</div>';
                 """
-            }
+            },
         )
 
         # Extract DOM
         result = await conn.execute_command(
             "Runtime.evaluate",
-            {"expression": "document.documentElement.outerHTML", "returnByValue": True}
+            {"expression": "document.documentElement.outerHTML", "returnByValue": True},
         )
 
         dom = result["result"]["value"]
@@ -243,8 +234,7 @@ async def test_chrome_crash_recovery_with_reconnect(chrome_session):
 
     # Verify connection works
     result = await conn.execute_command(
-        "Runtime.evaluate",
-        {"expression": "1 + 1", "returnByValue": True}
+        "Runtime.evaluate", {"expression": "1 + 1", "returnByValue": True}
     )
     assert result["result"]["value"] == 2
 
@@ -256,12 +246,14 @@ async def test_chrome_crash_recovery_with_reconnect(chrome_session):
     assert not conn.is_connected
 
     # Relaunch Chrome on same port
-    launcher_path = Path(__file__).parent.parent.parent / "scripts" / "core" / "chrome-launcher.sh"
+    launcher_path = (
+        Path(__file__).parent.parent.parent / "scripts" / "core" / "chrome-launcher.sh"
+    )
     try:
         output = subprocess.check_output(
             [str(launcher_path), "--mode=headless", "--port=9222", "--url=about:blank"],
             stderr=subprocess.PIPE,
-            timeout=10
+            timeout=10,
         )
         new_session = json.loads(output)
     except Exception as e:
@@ -277,8 +269,7 @@ async def test_chrome_crash_recovery_with_reconnect(chrome_session):
 
         # Verify reconnected session works
         result = await conn.execute_command(
-            "Runtime.evaluate",
-            {"expression": "2 + 2", "returnByValue": True}
+            "Runtime.evaluate", {"expression": "2 + 2", "returnByValue": True}
         )
         assert result["result"]["value"] == 4
     finally:
@@ -324,8 +315,7 @@ async def test_domain_replay_after_reconnect(chrome_session):
 
     # Trigger console event (should work because Console domain was replayed)
     await conn.execute_command(
-        "Runtime.evaluate",
-        {"expression": "console.log('Replay test')"}
+        "Runtime.evaluate", {"expression": "console.log('Replay test')"}
     )
 
     await asyncio.sleep(0.5)
@@ -370,18 +360,19 @@ async def test_event_handler_exception_isolation(chrome_session):
         # Trigger console event
         await conn.execute_command(
             "Runtime.evaluate",
-            {"expression": "console.log('Exception isolation test')"}
+            {"expression": "console.log('Exception isolation test')"},
         )
 
         await asyncio.sleep(0.5)
 
         # Verify both handlers were called
         assert error_handler_called, "Failing handler should have been called"
-        assert len(received_by_good_handler) > 0, "Good handler should have received event"
+        assert (
+            len(received_by_good_handler) > 0
+        ), "Good handler should have received event"
 
         # Verify connection still works after handler exception
         result = await conn.execute_command(
-            "Runtime.evaluate",
-            {"expression": "1 + 1", "returnByValue": True}
+            "Runtime.evaluate", {"expression": "1 + 1", "returnByValue": True}
         )
         assert result["result"]["value"] == 2

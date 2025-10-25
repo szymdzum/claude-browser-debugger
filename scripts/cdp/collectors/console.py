@@ -48,7 +48,7 @@ class ConsoleCollector:
     # Log level hierarchy (ascending severity)
     LOG_LEVELS = {
         "verbose": 0,
-        "debug": 0,    # Same as verbose
+        "debug": 0,  # Same as verbose
         "log": 1,
         "info": 2,
         "warn": 3,
@@ -74,7 +74,9 @@ class ConsoleCollector:
         self.output_path = Path(output_path) if output_path else None
         self.level_filter = level_filter
 
-        self._buffer = deque(maxlen=1000)  # Bounded buffer (FR-012: memory leak prevention)
+        self._buffer = deque(
+            maxlen=1000
+        )  # Bounded buffer (FR-012: memory leak prevention)
         self._flush_task: Optional[asyncio.Task] = None
         self._running = False
 

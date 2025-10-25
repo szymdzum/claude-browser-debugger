@@ -32,6 +32,7 @@ class CDPConnectionError(CDPError):
 
     Raised when establishing or maintaining CDP WebSocket connection fails.
     """
+
     pass
 
 
@@ -41,6 +42,7 @@ class ConnectionFailedError(CDPConnectionError):
     Raised when WebSocket connection cannot be established.
     Common causes: wrong port, Chrome not running, network issues.
     """
+
     pass
 
 
@@ -50,6 +52,7 @@ class ConnectionClosedError(CDPConnectionError):
     Raised when WebSocket connection is closed unexpectedly.
     Common causes: Chrome crash, network interruption, manual closure.
     """
+
     pass
 
 
@@ -59,7 +62,13 @@ class CDPCommandError(CDPError):
     Raised when CDP command returns an error response.
     """
 
-    def __init__(self, message: str, method: Optional[str] = None, error_code: Optional[int] = None, details: Optional[dict] = None):
+    def __init__(
+        self,
+        message: str,
+        method: Optional[str] = None,
+        error_code: Optional[int] = None,
+        details: Optional[dict] = None,
+    ):
         super().__init__(message, details)
         self.method = method
         self.error_code = error_code
@@ -71,6 +80,7 @@ class CommandFailedError(CDPCommandError):
     Raised when Chrome returns error response for executed command.
     Example: invalid JavaScript expression in Runtime.evaluate
     """
+
     pass
 
 
@@ -80,6 +90,7 @@ class InvalidCommandError(CDPCommandError):
     Raised when command is invalid before sending to Chrome.
     Example: missing required parameters, invalid method name.
     """
+
     pass
 
 
@@ -89,7 +100,13 @@ class CDPTimeoutError(CDPError):
     Raised when CDP command does not receive response within timeout period.
     """
 
-    def __init__(self, message: str, command_method: Optional[str] = None, timeout: Optional[float] = None, details: Optional[dict] = None):
+    def __init__(
+        self,
+        message: str,
+        command_method: Optional[str] = None,
+        timeout: Optional[float] = None,
+        details: Optional[dict] = None,
+    ):
         super().__init__(message, details)
         self.command_method = command_method
         self.timeout = timeout
@@ -107,7 +124,13 @@ class CDPTargetNotFoundError(CDPError):
     Example: no page target matching URL filter, invalid target ID.
     """
 
-    def __init__(self, message: str, target_id: Optional[str] = None, url_pattern: Optional[str] = None, details: Optional[dict] = None):
+    def __init__(
+        self,
+        message: str,
+        target_id: Optional[str] = None,
+        url_pattern: Optional[str] = None,
+        details: Optional[dict] = None,
+    ):
         super().__init__(message, details)
         self.target_id = target_id
         self.url_pattern = url_pattern
