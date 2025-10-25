@@ -32,8 +32,11 @@ python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
   --include-console \
   --summary=both
 ```
+
+> **Note**: The sample output below is from the legacy bash orchestrator for illustration. The Python CLI produces similar structured output but with different formatting. Run the command above to see actual Python CLI output.
+
 <details>
-<summary>Sample output</summary>
+<summary>Sample output (legacy orchestrator - illustrative)</summary>
 
 ```text
 🔧 Debug Configuration:
@@ -50,7 +53,7 @@ python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
    Port: 9222
    Page ID: B3F1C93AF7B1138DBF22B723CCDB32C2
 
-📡 Monitoring network traffic for 15s...
+📡 Monitoring console logs for 15s...
 {"event": "request", "url": "https://example.com/", "method": "GET", "requestId": "76F4.1"}
 {"event": "response", "url": "https://example.com/", "status": 200, "statusText": "OK", "mimeType": "text/html", "requestId": "76F4.1"}
 {"type": "log", "timestamp": 1.0, "message": "Rendering home route", "source": "console-api"}

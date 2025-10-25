@@ -27,7 +27,7 @@ This guide explains how AI agents interact with the CDP (Chrome DevTools Protoco
 
 **Command**:
 ```bash
-python -m scripts.cdp.cli dom --url "https://example.com" --output /tmp/page.html
+python -m scripts.cdp.cli.main dom dump --url "https://example.com" --output /tmp/page.html
 ```
 
 **What Happens**:
@@ -62,7 +62,7 @@ python -m scripts.cdp.cli dom --url "https://example.com" --output /tmp/page.htm
 
 **Command**:
 ```bash
-python -m scripts.cdp.cli console --duration 30 --output /tmp/console.jsonl
+python -m scripts.cdp.cli.main console stream --url "https://example.com" --duration 30 --output /tmp/console.jsonl
 ```
 
 **What Happens**:
@@ -92,7 +92,7 @@ python -m scripts.cdp.cli console --duration 30 --output /tmp/console.jsonl
 
 **Command**:
 ```bash
-python -m scripts.cdp.cli network --duration 30 --output /tmp/network.jsonl
+python -m scripts.cdp.cli.main network record --url "https://example.com" --duration 30 --output /tmp/network.jsonl
 ```
 
 **What Happens**:
@@ -118,33 +118,29 @@ python -m scripts.cdp.cli network --duration 30 --output /tmp/network.jsonl
 
 ## The Orchestrator (All-in-One) 🎭
 
-**Purpose**: Capture DOM + console + network in a single session
+**Purpose**: Capture DOM + console in a single automated session
 
 **Command**:
 ```bash
-python -m scripts.cdp.cli orchestrate \
-  --url "https://example.com" \
+python -m scripts.cdp.cli.main orchestrate headless "https://example.com" \
   --duration 30 \
-  --console \
-  --network \
+  --include-console \
   --output-dir /tmp/debug-session/
 ```
 
 **What Happens**:
-1. CLI launches Chrome with the URL
-2. Starts console monitor in the background
-3. Starts network monitor in the background
-4. Waits 30 seconds (or until you press Ctrl+C)
-5. Extracts the final DOM state
-6. Stops all monitors gracefully
-7. Generates a summary report
+1. CLI launches Chrome in headless mode with the URL
+2. Starts console monitor in the background (if --include-console specified)
+3. Waits for specified duration (or until you press Ctrl+C)
+4. Extracts the final DOM state
+5. Stops all monitors gracefully
+6. Generates a summary report
 
 **Output Files**:
 ```
 /tmp/debug-session/
 ├── dom.html               # Final page structure
-├── console.jsonl          # All console messages (one per line)
-├── network.jsonl          # All network requests (one per line)
+├── console.jsonl          # All console messages (if --include-console used)
 └── summary.txt            # Human-readable summary
 ```
 
@@ -160,18 +156,14 @@ Console Messages: 15 total
   - warning: 2
   - error: 1
 
-Network Requests: 23 total
-  - GET: 20
-  - POST: 3
-  - Status 200: 22
-  - Status 404: 1
-
 DOM: 1,234 elements extracted
 ```
 
-**Use Case**: Full website inspection, bug diagnosis, performance analysis
+**Note**: Network monitoring is available via the standalone `network record` command. To capture both console and network, run `orchestrate` with `--include-console` and `network record` in separate terminals.
 
-**Think of it as**: A complete surveillance operation on the website
+**Use Case**: Automated website inspection, bug diagnosis, console error monitoring
+
+**Think of it as**: An automated debugging session that captures state
 
 ---
 
@@ -181,20 +173,17 @@ DOM: 1,234 elements extracted
 
 **Command**:
 ```bash
-python -m scripts.cdp.cli orchestrate \
-  --url "http://localhost:3000/signin" \
-  --mode headed \
-  --console \
-  --network
+python -m scripts.cdp.cli.main orchestrate headed "http://localhost:3000/signin" \
+  --include-console
 ```
 
 **What Happens**:
 1. CLI launches **visible Chrome window** (not headless)
-2. Starts console and network monitors
+2. Starts console monitor in background (if --include-console specified)
 3. **You interact with the page manually** (click buttons, fill forms, navigate)
-4. Monitors capture everything in the background
+4. Monitor captures everything in the background
 5. Press **Ctrl+C** when done
-6. CLI extracts final DOM, stops monitors, generates summary
+6. CLI extracts final DOM, stops monitor, generates summary
 
 **Use Case**: Debugging login flows, testing interactive features, recording user sessions
 
@@ -209,13 +198,11 @@ python -m scripts.cdp.cli orchestrate \
 ```
 ^C Signal received, stopping session...
 ✓ Console monitor stopped
-✓ Network monitor stopped
 ✓ DOM extracted to /tmp/debug-session/dom.html
 ✓ Summary generated
 
 Artifacts saved to:
   /tmp/debug-session/console.jsonl
-  /tmp/debug-session/network.jsonl
   /tmp/debug-session/dom.html
   /tmp/debug-session/summary.txt
 ```
@@ -245,7 +232,7 @@ Artifacts saved to:
 2. Agent sees: "Takes CLI arguments, returns exit code"
 3. Agent checks CLI help:
    ```bash
-   python -m scripts.cdp.cli orchestrate --help
+   python -m scripts.cdp.cli.main orchestrate --help
    ```
 4. Agent sees exact arguments and types
 5. Agent constructs correct command immediately 🎉
@@ -336,31 +323,34 @@ print(result["result"]["value"])  # Page title
 **Goal**: Understand why login fails
 
 **Steps**:
-1. **Run orchestrator in headed mode**:
+1. **Run orchestrator in headed mode with console monitoring**:
    ```bash
-   python -m scripts.cdp.cli orchestrate \
-     --url "http://localhost:3000/login" \
-     --mode headed \
-     --console \
-     --network \
+   python -m scripts.cdp.cli.main orchestrate headed "http://localhost:3000/login" \
+     --include-console \
      --output-dir /tmp/login-debug/
    ```
 
-2. **Manually interact**: Fill username/password, click "Login"
+2. **In a separate terminal, start network monitoring**:
+   ```bash
+   python -m scripts.cdp.cli.main network record --url "http://localhost:3000/login" \
+     --duration 60 --output /tmp/login-debug/network.jsonl
+   ```
 
-3. **Press Ctrl+C** when done
+3. **Manually interact**: Fill username/password, click "Login"
 
-4. **Analyze console.jsonl**: Look for JavaScript errors
+4. **Press Ctrl+C** in orchestrator terminal when done
+
+5. **Analyze console.jsonl**: Look for JavaScript errors
    ```bash
    cat /tmp/login-debug/console.jsonl | jq 'select(.level == "error")'
    ```
 
-5. **Analyze network.jsonl**: Find failed API calls
+6. **Analyze network.jsonl**: Find failed API calls
    ```bash
    cat /tmp/login-debug/network.jsonl | jq 'select(.status >= 400)'
    ```
 
-6. **Analyze DOM**: Check if error messages appeared
+7. **Analyze DOM**: Check if error messages appeared
    ```bash
    grep "error-message" /tmp/login-debug/dom.html
    ```
@@ -372,10 +362,8 @@ print(result["result"]["value"])  # Page title
 **Steps**:
 1. **Run network monitor**:
    ```bash
-   python -m scripts.cdp.cli network \
-     --url "https://example.com" \
-     --duration 30 \
-     --output /tmp/api-discovery.jsonl
+   python -m scripts.cdp.cli.main network record --url "https://example.com" \
+     --duration 30 --output /tmp/api-discovery.jsonl
    ```
 
 2. **Extract unique URLs**:
@@ -395,10 +383,8 @@ print(result["result"]["value"])  # Page title
 **Steps**:
 1. **Run console monitor in background**:
    ```bash
-   python -m scripts.cdp.cli console \
-     --url "https://example.com/dashboard" \
-     --duration 60 \
-     --output /tmp/live-updates.jsonl &
+   python -m scripts.cdp.cli.main console stream --url "https://example.com/dashboard" \
+     --duration 60 --output /tmp/live-updates.jsonl &
    ```
 
 2. **Tail the output** to see live updates:
@@ -489,7 +475,7 @@ echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"document.docum
 
 ```bash
 # ✅ CORRECT (CLI does this automatically)
-python -m scripts.cdp.cli orchestrate --mode headed --url "https://example.com"
+python -m scripts.cdp.cli.main orchestrate headed "https://example.com"
 
 # ❌ WRONG (manual Chrome launch without --user-data-dir)
 chrome --remote-debugging-port=9222 https://example.com
