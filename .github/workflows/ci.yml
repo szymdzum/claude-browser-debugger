@@ -4,7 +4,15 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    # Run full matrix nightly at 2 AM UTC
+    - cron: '0 2 * * *'
   workflow_dispatch:
+
+# Cancel redundant runs on PR force-push
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -12,7 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.12"]
+        # PR/push: test only 3.10 and 3.12 (⅓ faster)
+        # Nightly/scheduled: test full matrix 3.10, 3.11, 3.12
+        python-version: ${{ github.event_name == 'schedule' && fromJSON('["3.10", "3.11", "3.12"]') || fromJSON('["3.10", "3.12"]') }}
       fail-fast: false
 
     steps:
@@ -74,3 +84,54 @@ jobs:
 
       - name: Type check
         run: mypy scripts/cdp/ --ignore-missing-imports --explicit-package-bases
+
+  smoke-tests:
+    name: smoke-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: Install CLI dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install websockets aiohttp
+
+      - name: CLI smoke tests (no Chrome required)
+        run: |
+          # Test all 7 subcommands show help text
+          python -m scripts.cdp.cli --help
+          python -m scripts.cdp.cli session --help
+          python -m scripts.cdp.cli eval --help
+          python -m scripts.cdp.cli dom --help
+          python -m scripts.cdp.cli console --help
+          python -m scripts.cdp.cli network --help
+          python -m scripts.cdp.cli orchestrate --help
+          python -m scripts.cdp.cli query --help
+
+  # Optional: PR comment on test failure
+  comment-on-failure:
+    name: comment-on-failure
+    runs-on: ubuntu-latest
+    needs: [test, lint, typecheck, smoke-tests]
+    if: failure() && github.event_name == 'pull_request'
+    steps:
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            ## ❌ CI Checks Failed
+
+            One or more CI checks have failed. Please review the logs:
+
+            - [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            **Common fixes:**
+            - Run tests locally: `pytest tests/ -v --tb=short`
+            - Check linting: `pylint scripts/cdp/ --disable=missing-docstring,too-few-public-methods,import-error,duplicate-code --fail-under=9.0`
+            - Check types: `mypy scripts/cdp/ --ignore-missing-imports --explicit-package-bases`
