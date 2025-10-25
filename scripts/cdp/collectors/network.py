@@ -9,13 +9,18 @@ import json
 import sys
 from pathlib import Path
 from collections import deque
-from typing import Optional, Dict, Deque, TypedDict
+from typing import Optional, Dict, Deque, TypedDict, TYPE_CHECKING
 
 # NotRequired added in Python 3.11, use typing_extensions for 3.10 compatibility
-try:
-    from typing import NotRequired
-except ImportError:
-    from typing_extensions import NotRequired  # type: ignore[assignment]
+if TYPE_CHECKING:
+    # For type checkers, always import from typing_extensions for consistency
+    from typing_extensions import NotRequired
+else:
+    # At runtime, try typing first (Python 3.11+), fall back to typing_extensions
+    try:
+        from typing import NotRequired
+    except ImportError:
+        from typing_extensions import NotRequired
 
 from ..connection import CDPConnection
 from ..exceptions import CDPError
