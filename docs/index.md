@@ -32,6 +32,9 @@
 
 ## Development
 
+**Agent Education:**
+- [development/agent-cli-guide.md](development/agent-cli-guide.md) - **Educational guide**: How agents use DOM/console/network CLI (recommended first read)
+
 **Skill Development:**
 - [development/skills.md](development/skills.md) - Claude Code skill system fundamentals
 - [development/skills-best-practices.md](development/skills-best-practices.md) - Best practices for skill authoring
@@ -72,12 +75,13 @@ See [../scripts/README.md](../scripts/README.md) for script documentation:
 
 **For agents working on specific tasks, read in this order:**
 
-1. **First-time setup**: [../SKILL.md](../SKILL.md) (comprehensive agent guide)
-2. **Headed mode debugging**: [guides/workflow-guide.md](guides/workflow-guide.md)
-3. **Custom CDP commands**: [reference/cdp-commands.md](reference/cdp-commands.md)
-4. **Troubleshooting**: [guides/troubleshooting.md](guides/troubleshooting.md)
-5. **Advanced internals**: [reference/websocat-analysis.md](reference/websocat-analysis.md)
+1. **First-time setup (educational)**: [development/agent-cli-guide.md](development/agent-cli-guide.md) - Learn how DOM/console/network CLI works
+2. **Quick reference**: [../SKILL.md](../SKILL.md) - Comprehensive agent guide with examples
+3. **Headed mode debugging**: [guides/workflow-guide.md](guides/workflow-guide.md)
+4. **Custom CDP commands**: [reference/cdp-commands.md](reference/cdp-commands.md)
+5. **Troubleshooting**: [guides/troubleshooting.md](guides/troubleshooting.md)
+6. **Advanced internals**: [reference/websocat-analysis.md](reference/websocat-analysis.md)
 
 **Avoid reading unless needed:**
-- `development/` - Only for skill authoring
+- `development/skills*.md` - Only for skill authoring
 - `guides/chrome-136-incident.md` - Only if CDP connection fails

@@ -28,13 +28,15 @@ Here's what the Python CDP CLI produces when monitoring a page:
 ```bash
 python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
   --duration 15 \
-  --output /tmp/output.log \
-  --console \
-  --network \
-  --summary both
+  --output-dir /tmp \
+  --include-console \
+  --summary=both
 ```
+
+> **Note**: The sample output below is from the legacy bash orchestrator for illustration. The Python CLI produces similar structured output but with different formatting. Run the command above to see actual Python CLI output.
+
 <details>
-<summary>Sample output</summary>
+<summary>Sample output (legacy orchestrator - illustrative)</summary>
 
 ```text
 🔧 Debug Configuration:
@@ -51,7 +53,7 @@ python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
    Port: 9222
    Page ID: B3F1C93AF7B1138DBF22B723CCDB32C2
 
-📡 Monitoring network traffic for 15s...
+📡 Monitoring console logs for 15s...
 {"event": "request", "url": "https://example.com/", "method": "GET", "requestId": "76F4.1"}
 {"event": "response", "url": "https://example.com/", "status": 200, "statusText": "OK", "mimeType": "text/html", "requestId": "76F4.1"}
 {"type": "log", "timestamp": 1.0, "message": "Rendering home route", "source": "console-api"}
@@ -180,10 +182,9 @@ For command-line testing:
 ```bash
 python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
   --duration 15 \
-  --output /tmp/output.log \
-  --console \
-  --network \
-  --summary both
+  --output-dir /tmp \
+  --include-console \
+  --summary=both
 ```
 This produces network timelines, console output, and both JSON and human-readable summaries.
 
@@ -283,10 +284,8 @@ This skill handles Chrome 136+ profile isolation requirements automatically. For
 # Full orchestration with all collectors
 python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
   --duration 30 \
-  --console \
-  --network \
-  --include-bodies \
-  --summary both
+  --include-console \
+  --summary=both
 
 # Console monitoring only
 python3 -m scripts.cdp.cli.main console stream --url https://example.com \
@@ -347,7 +346,7 @@ python3 -m scripts.cdp.cli.main console stream --url https://example.com --durat
 python3 -m scripts.cdp.cli.main network record --url https://example.com --duration 30 --output network.json
 
 # Full workflow
-python3 -m scripts.cdp.cli.main orchestrate headless https://example.com --console --network --summary both
+python3 -m scripts.cdp.cli.main orchestrate headless https://example.com --include-console --summary=both
 ```
 
 ### Documentation
