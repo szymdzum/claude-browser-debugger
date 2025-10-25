@@ -18,11 +18,15 @@ Give Claude Code direct access to browser state—DOM snapshots, console output,
 
 ### Sample CLI Run
 
-Here's what the orchestrator produces when monitoring a page:
+Here's what the Python CDP CLI produces when monitoring a page:
 
 ```bash
-./scripts/core/debug-orchestrator.sh "https://example.com" 15 /tmp/output.log \
-  --include-console --summary=both --idle=3
+python3 -m scripts.cdp.cli.main orchestrate https://example.com \
+  --duration 15 \
+  --output /tmp/output.log \
+  --console \
+  --network \
+  --summary both
 ```
 <details>
 <summary>Sample output</summary>
@@ -169,8 +173,12 @@ major step when I tell you.
 
 For command-line testing:
 ```bash
-./scripts/core/debug-orchestrator.sh "https://example.com" 15 /tmp/output.log \
-  --include-console --summary=both --idle=3
+python3 -m scripts.cdp.cli.main orchestrate https://example.com \
+  --duration 15 \
+  --output /tmp/output.log \
+  --console \
+  --network \
+  --summary both
 ```
 This produces network timelines, console output, and both JSON and human-readable summaries.
 
@@ -267,22 +275,38 @@ This skill handles Chrome 136+ profile isolation requirements automatically. For
 ## Advanced Usage
 
 ```bash
-# Idle detection (stops after 3s of network inactivity)
-./scripts/core/debug-orchestrator.sh "https://example.com" --idle=3
+# Full orchestration with all collectors
+python3 -m scripts.cdp.cli.main orchestrate https://example.com \
+  --duration 30 \
+  --console \
+  --network \
+  --include-bodies \
+  --summary both
 
-# Fixed timeout (30 seconds)
-./scripts/core/debug-orchestrator.sh "https://example.com" 30 /tmp/out.log
+# Console monitoring only
+python3 -m scripts.cdp.cli.main console https://example.com \
+  --duration 60 \
+  --level warn \
+  --output /tmp/console.jsonl
 
-# Capture response bodies for failed requests
-./scripts/core/debug-orchestrator.sh "https://example.com" \
-  --include-console \
-  --network-script=cdp-network-with-body.py \
-  --filter-status=error
+# Network traffic capture with response bodies
+python3 -m scripts.cdp.cli.main network https://example.com \
+  --duration 30 \
+  --include-bodies \
+  --output /tmp/network.json
 
-# Session persistence
-./scripts/utilities/save-session.sh /tmp/debug-session
-./scripts/utilities/resume-session.sh /tmp/debug-session
+# JavaScript evaluation
+python3 -m scripts.cdp.cli.main eval https://example.com \
+  --expression "document.querySelector('.main-content').textContent" \
+  --format text
+
+# DOM extraction with wait
+python3 -m scripts.cdp.cli.main dom https://example.com \
+  --wait-for "body.loaded" \
+  --output /tmp/dom.html
 ```
+
+> **Note**: Legacy Bash orchestrator (`scripts/legacy/debug-orchestrator.sh`) is deprecated. See `docs/guides/bash-to-python-migration.md` for migration guide.
 
 **Uninstall**
 ```bash
@@ -298,23 +322,28 @@ rm -rf ~/.claude/skills/browser-debugger
 
 ### Core Components
 
+- **`scripts/cdp/`** – Python CDP client library with connection management, collectors, and CLI interface
+  - `connection.py` – WebSocket CDP connection with automatic reconnection
+  - `session.py` – Target discovery and session management
+  - `collectors/` – Console, network, and DOM monitoring
+  - `cli/` – Unified command-line interface with subcommands
 - **`scripts/core/chrome-launcher.sh`** – Launches Chrome (headless/headed), manages isolated profiles for Chrome 136+, returns CDP WebSocket URL
-- **`scripts/core/debug-orchestrator.sh`** – Coordinates collectors, manages lifecycle, generates structured summaries
-- **`scripts/collectors/`** – Console logging, network monitoring (with optional response bodies), DOM change detection, summary generation
-- **`scripts/utilities/`** – Session save/resume, Chrome cleanup, ad-hoc CDP command execution
+- **`scripts/legacy/`** – Deprecated Bash orchestrator and collectors (use Python CLI instead)
 
 ### Manual Testing
 
 ```bash
-# Quick DOM dump
-chrome --headless=new --dump-dom https://example.com
+# Quick DOM extraction
+python3 -m scripts.cdp.cli.main dom https://example.com --output dom.html
 
-# Console monitoring example
-chrome --headless=new --remote-debugging-port=9222 https://example.com &
-sleep 2
-PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[0].id')
-python3 ~/.claude/skills/browser-debugger/scripts/collectors/cdp-console.py "$PAGE_ID"
-pkill -f "chrome.*9222"
+# Console monitoring
+python3 -m scripts.cdp.cli.main console https://example.com --duration 30 --output console.jsonl
+
+# Network capture
+python3 -m scripts.cdp.cli.main network https://example.com --duration 30 --output network.json
+
+# Full workflow
+python3 -m scripts.cdp.cli.main orchestrate https://example.com --console --network --summary both
 ```
 
 ### Documentation
