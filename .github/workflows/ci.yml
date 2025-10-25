@@ -20,9 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # PR/push: test only 3.10 and 3.12 (⅓ faster)
-        # Nightly/scheduled: test full matrix 3.10, 3.11, 3.12
-        python-version: ${{ github.event_name == 'schedule' && fromJSON('["3.10", "3.11", "3.12"]') || fromJSON('["3.10", "3.12"]') }}
+        # Test only 3.10 (minimum) and 3.12 (latest stable)
+        python-version: ["3.10", "3.12"]
       fail-fast: false
 
     steps:
