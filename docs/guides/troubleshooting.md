@@ -220,7 +220,7 @@ ps aux | grep chrome | grep remote-debugging-port
 ```
 
 **Solution:**
-Ensure you're using `scripts/core/chrome-launcher.sh` or `scripts/core/debug-orchestrator.sh`, which handle this automatically. If launching Chrome manually, always include `--user-data-dir`:
+Ensure you're using `scripts/core/chrome-launcher.sh` or `scripts/corpython3 -m scripts.cdp.cli.main orchestrate`, which handle this automatically. If launching Chrome manually, always include `--user-data-dir`:
 
 ```bash
 # Kill Chrome
@@ -249,7 +249,7 @@ pkill -f "chrome.*chrome-debug-profile"
 sleep 2
 
 # Relaunch
-./scripts/core/debug-orchestrator.sh "URL" --mode=headed --include-console
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "URL" --mode=headed --include-console
 
 # Or use a different profile path
 PROFILE="/tmp/chrome-debug-$(date +%s)"
@@ -282,12 +282,12 @@ ps aux | grep chrome | grep remote-debugging
 **Solution:**
 ```bash
 # If Chrome not running, launch it
-./scripts/core/debug-orchestrator.sh "https://example.com" --mode=headed --include-console
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "https://example.com" --mode=headed --include-console
 
 # If Chrome running but not responding, restart it
 pkill -f "chrome.*9222"
 sleep 2
-./scripts/core/debug-orchestrator.sh "https://example.com" --mode=headed --include-console
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "https://example.com" --mode=headed --include-console
 ```
 
 ### Issue: Chrome responds to HTTP but not WebSocket
@@ -504,7 +504,7 @@ Wait for JavaScript frameworks to hydrate before extracting DOM:
 
 ```bash
 # Launch Chrome
-./scripts/core/debug-orchestrator.sh "http://localhost:3000" --mode=headed --include-console
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000" --mode=headed --include-console
 
 # Wait for hydration (adjust timing as needed)
 sleep 3
@@ -547,7 +547,7 @@ sleep 2
 lsof -i :9222
 
 # Relaunch
-./scripts/core/debug-orchestrator.sh "URL" --mode=headed --include-console
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "URL" --mode=headed --include-console
 ```
 
 **Solution Option 2: Use alternate port**
@@ -703,7 +703,7 @@ Validate headed Chrome CDP functionality after Chrome updates:
 
 ```bash
 # 1. Test headed Chrome launch
-./scripts/core/debug-orchestrator.sh "https://example.com" --mode=headed --include-console
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "https://example.com" --mode=headed --include-console
 
 # 2. Verify Chrome responds to CDP commands
 WS_URL=$(curl -s http://localhost:9222/json | jq -r '.[0].webSocketDebuggerUrl')
@@ -808,7 +808,7 @@ bash: ./cdp-console.py: Permission denied
 # Add execute permissions
 chmod +x scripts/collectors/cdp-console.py
 chmod +x scripts/collectors/cdp-network.py
-chmod +x scripts/core/debug-orchestrator.sh
+chmod +x scripts/corpython3 -m scripts.cdp.cli.main orchestrate
 chmod +x scripts/core/chrome-launcher.sh
 
 # Verify permissions

@@ -19,24 +19,24 @@ The `--filter` flag enables **selective body capture** for requests matching a p
 ### Syntax
 
 ```bash
-./debug-orchestrator.sh "URL" DURATION OUTPUT --filter=PATTERN
+python3 -m scripts.cdp.cli.main orchestrate "URL" DURATION OUTPUT --filter=PATTERN
 ```
 
 ### Examples
 
 **Capture marketing API responses:**
 ```bash
-./debug-orchestrator.sh "http://localhost:3000" 30 /tmp/test.log --filter=marketing
+python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000" 30 /tmp/test.log --filter=marketing
 ```
 
 **Capture all /api/ endpoints:**
 ```bash
-./debug-orchestrator.sh "http://localhost:3000" 30 /tmp/test.log --filter=api
+python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000" 30 /tmp/test.log --filter=api
 ```
 
 **Capture specific endpoint:**
 ```bash
-./debug-orchestrator.sh "http://localhost:3000" 30 /tmp/test.log --filter=customer/register
+python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000" 30 /tmp/test.log --filter=customer/register
 ```
 
 ---
@@ -171,10 +171,10 @@ The `--filter` flag enables **selective body capture** for requests matching a p
 
 ```bash
 # Session 1: Capture marketing
-./debug-orchestrator.sh URL 30 /tmp/marketing.log --filter=marketing
+python3 -m scripts.cdp.cli.main orchestrate URL 30 /tmp/marketing.log --filter=marketing
 
 # Session 2: Capture customer
-./debug-orchestrator.sh URL 30 /tmp/customer.log --filter=customer
+python3 -m scripts.cdp.cli.main orchestrate URL 30 /tmp/customer.log --filter=customer
 ```
 
 ### Exclude Pattern (NOT Logic)
@@ -190,7 +190,7 @@ The `--filter` flag enables **selective body capture** for requests matching a p
 ### Debug Failed Login API
 
 ```bash
-./debug-orchestrator.sh "http://localhost:3000/login" 60 /tmp/login-debug.log \
+python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000/login" 60 /tmp/login-debug.log \
   --filter=auth/login --include-console
 ```
 
@@ -201,7 +201,7 @@ The `--filter` flag enables **selective body capture** for requests matching a p
 ### Investigate Missing Customer Data
 
 ```bash
-./debug-orchestrator.sh "http://localhost:3000/dashboard" 120 /tmp/customer-debug.log \
+python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000/dashboard" 120 /tmp/customer-debug.log \
   --filter=customer --mode=headed --include-console
 ```
 
@@ -212,7 +212,7 @@ The `--filter` flag enables **selective body capture** for requests matching a p
 ### Performance Test API Endpoint
 
 ```bash
-./debug-orchestrator.sh "http://localhost:3000/api-test" 30 /tmp/perf.log \
+python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000/api-test" 30 /tmp/perf.log \
   --filter=/v1/products --idle=5
 ```
 

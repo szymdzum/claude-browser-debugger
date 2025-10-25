@@ -523,7 +523,7 @@ echo '{"id":1,"method":"Accessibility.getFullAXTree"}' | websocat -n1 -B 2097152
 - `-32601`: Method not found
 - `-32602`: Invalid params
 
-### debug-orchestrator.sh Output
+### Orchestrator Output
 
 ```json
 {

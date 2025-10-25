@@ -19,7 +19,7 @@
 
 **Command:**
 ```bash
-./debug-orchestrator.sh "http://localhost:3000/customer/register" 3600 /tmp/my-test.log \
+python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000/customer/register" 3600 /tmp/my-test.log \
   --mode=headed --include-console
 ```
 
@@ -218,7 +218,7 @@ echo '{"id":1,"method":"Runtime.evaluate","params":{"expression":"JSON.stringify
 ```bash
 pkill -f "chrome.*9222"
 # Wait 2 seconds
-./debug-orchestrator.sh ...  # Retry
+python3 -m scripts.cdp.cli.main orchestrate ...  # Retry
 ```
 
 ---
@@ -261,7 +261,7 @@ cat inject-redux.js | websocat -n1 "$WS_URL"
 
 **Solution:** Increase timeout duration
 ```bash
-./debug-orchestrator.sh "URL" 7200 /tmp/test.log --mode=headed  # 2 hours instead of 1
+python3 -m scripts.cdp.cli.main orchestrate "URL" 7200 /tmp/test.log --mode=headed  # 2 hours instead of 1
 ```
 
 ---
@@ -273,7 +273,7 @@ cat inject-redux.js | websocat -n1 "$WS_URL"
 **Solution:**
 - Ensure headed mode session is still active
 - Check Chrome PID from ready notification
-- Restart debug-orchestrator.sh if needed
+- Restart the orchestrator if needed
 
 ---
 
@@ -283,7 +283,7 @@ cat inject-redux.js | websocat -n1 "$WS_URL"
 
 ```bash
 # 1. Launch headed mode
-./debug-orchestrator.sh "http://localhost:3000/register" 1800 /tmp/register-test.log \
+python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000/register" 1800 /tmp/register-test.log \
   --mode=headed --include-console
 
 # Expected: Chrome opens with registration form
@@ -322,7 +322,7 @@ jq '.[] | {name, value, type}' /tmp/register-state/form-data.json
 
 | Command | Purpose | Duration |
 |---------|---------|----------|
-| `./debug-orchestrator.sh URL 3600 LOG --mode=headed --include-console` | Launch Chrome | 3-5s |
+| `python3 -m scripts.cdp.cli.main orchestrate URL 3600 LOG --mode=headed --include-console` | Launch Chrome | 3-5s |
 | `./extract-state.sh [PORT] [DIR]` | Extract state | 5-10s |
 | `cat inject-redux.js \| websocat -n1 $WS_URL` | Inject Redux | 1s |
 | `jq '.field' OUTPUT/file.json` | Query JSON | <1s |

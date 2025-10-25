@@ -266,7 +266,7 @@ Reference: DOM saved at /tmp/live-dom.html
 **Sequential steps for agents to copy and track:**
 
 1. ☐ Verify prerequisites (Chrome, Python, jq, websocat or Python websockets)
-2. ☐ Launch Chrome: `./debug-orchestrator.sh "URL" --mode=headed --include-console`
+2. ☐ Launch Chrome: `python3 -m scripts.cdp.cli.main orchestrate "URL" --mode=headed --include-console`
 3. ☐ Extract WebSocket URL from JSON output or re-fetch: `curl -s http://localhost:9222/json | jq -r '.[0].webSocketDebuggerUrl'`
 4. ☐ Instruct user on what actions to perform
 5. ☐ Wait for user signal ("ready")
@@ -366,7 +366,7 @@ The orchestrator implements robust error detection with clear recovery guidance.
 #### 404 Hard-Stop (Remote URLs)
 
 ```bash
-./scripts/core/debug-orchestrator.sh "https://example.com/nonexistent"
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "https://example.com/nonexistent"
 
 # Output:
 ❌ URL validation failed - HARD STOP
@@ -389,7 +389,7 @@ The orchestrator implements robust error detection with clear recovery guidance.
 #### Localhost Lenient Validation
 
 ```bash
-./scripts/core/debug-orchestrator.sh "http://localhost:3000/signin"
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000/signin"
 
 # Output (for any HTTP status 200-599):
 🔍 Validating URL: http://localhost:3000/signin (localhost - lenient validation)
@@ -405,7 +405,7 @@ The orchestrator implements robust error detection with clear recovery guidance.
 
 ```bash
 # If collector scripts are missing/moved
-./scripts/core/debug-orchestrator.sh "http://example.com"
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "http://example.com"
 
 # Output:
 {
@@ -425,7 +425,7 @@ The orchestrator implements robust error detection with clear recovery guidance.
 
 ```bash
 # If port 9222 is already in use
-./scripts/core/debug-orchestrator.sh "http://localhost:3000"
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000"
 
 # Output:
 ❌ Chrome launch failed
@@ -445,7 +445,7 @@ The orchestrator implements robust error detection with clear recovery guidance.
 
 ```bash
 # If Python websockets library is missing
-./scripts/core/debug-orchestrator.sh "http://localhost:3000" --include-console
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000" --include-console
 
 # Output:
 ❌ Console monitor failed to start
@@ -468,7 +468,7 @@ The orchestrator implements robust error detection with clear recovery guidance.
 For intentionally unreachable URLs (e.g., testing CDP behavior on invalid pages):
 
 ```bash
-./scripts/core/debug-orchestrator.sh "https://invalid-domain-12345.com" \
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "https://invalid-domain-12345.com" \
   --skip-validation --summary=both
 ```
 
@@ -560,7 +560,7 @@ pkill -f "chrome.*9222"
 
 ```bash
 # Launch Chrome and save session info
-./scripts/core/debug-orchestrator.sh "http://localhost:3000" --mode=headed --include-console > /tmp/chrome-session.json
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000" --mode=headed --include-console > /tmp/chrome-session.json
 
 # Extract session details
 CHROME_PID=$(jq -r '.chrome_pid' /tmp/chrome-session.json)
@@ -584,7 +584,7 @@ If Chrome is already bound to port 9222, the orchestrator aborts after showing t
 pkill -f "chrome.*9222"
 
 # Or use alternate port
-./scripts/core/debug-orchestrator.sh "URL" --mode=headed --port=9223
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "URL" --mode=headed --port=9223
 ```
 
 ---
@@ -714,7 +714,7 @@ python3 scripts/collectors/cdp-console.py $PAGE_ID > /tmp/console.log &
 python3 scripts/collectors/cdp-network.py $PAGE_ID > /tmp/network.log &
 
 # Orchestrated capture with summaries & idle detection
-./scripts/core/debug-orchestrator.sh "$URL" 15 /tmp/network.log --include-console --summary=both --idle=2
+./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "$URL" 15 /tmp/network.log --include-console --summary=both --idle=2
 
 # Cleanup
 pkill -f "chrome.*9222"
