@@ -21,7 +21,7 @@ Give Claude Code direct access to browser state—DOM snapshots, console output,
 Here's what the Python CDP CLI produces when monitoring a page:
 
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate https://example.com \
+python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
   --duration 15 \
   --output /tmp/output.log \
   --console \
@@ -173,7 +173,7 @@ major step when I tell you.
 
 For command-line testing:
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate https://example.com \
+python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
   --duration 15 \
   --output /tmp/output.log \
   --console \
@@ -224,7 +224,7 @@ cdp orchestrate headless https://example.com --include-console
 
 See `docs/examples/` for comprehensive usage examples.
 
-### Claude Code Skill (Legacy Bash Interface)
+### Claude Code Skill Packaging
 
 ```bash
 # Recommended: symlink install (updates follow git pulls automatically)
@@ -276,7 +276,7 @@ This skill handles Chrome 136+ profile isolation requirements automatically. For
 
 ```bash
 # Full orchestration with all collectors
-python3 -m scripts.cdp.cli.main orchestrate https://example.com \
+python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
   --duration 30 \
   --console \
   --network \
@@ -284,13 +284,13 @@ python3 -m scripts.cdp.cli.main orchestrate https://example.com \
   --summary both
 
 # Console monitoring only
-python3 -m scripts.cdp.cli.main console https://example.com \
+python3 -m scripts.cdp.cli.main console stream --url https://example.com \
   --duration 60 \
   --level warn \
   --output /tmp/console.jsonl
 
 # Network traffic capture with response bodies
-python3 -m scripts.cdp.cli.main network https://example.com \
+python3 -m scripts.cdp.cli.main network record --url https://example.com \
   --duration 30 \
   --include-bodies \
   --output /tmp/network.json
@@ -336,13 +336,13 @@ rm -rf ~/.claude/skills/browser-debugger
 python3 -m scripts.cdp.cli.main dom https://example.com --output dom.html
 
 # Console monitoring
-python3 -m scripts.cdp.cli.main console https://example.com --duration 30 --output console.jsonl
+python3 -m scripts.cdp.cli.main console stream --url https://example.com --duration 30 --output console.jsonl
 
 # Network capture
-python3 -m scripts.cdp.cli.main network https://example.com --duration 30 --output network.json
+python3 -m scripts.cdp.cli.main network record --url https://example.com --duration 30 --output network.json
 
 # Full workflow
-python3 -m scripts.cdp.cli.main orchestrate https://example.com --console --network --summary both
+python3 -m scripts.cdp.cli.main orchestrate headless https://example.com --console --network --summary both
 ```
 
 ### Documentation

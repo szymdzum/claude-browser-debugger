@@ -266,7 +266,7 @@ Reference: DOM saved at /tmp/live-dom.html
 **Sequential steps for agents to copy and track:**
 
 1. ☐ Verify prerequisites (Chrome, Python, jq, websocat or Python websockets)
-2. ☐ Launch Chrome: `python3 -m scripts.cdp.cli.main orchestrate "URL" --mode=headed --include-console`
+2. ☐ Launch Chrome: `python3 -m scripts.cdp.cli.main orchestrate headed "URL" --include-console`
 3. ☐ Extract WebSocket URL from JSON output or re-fetch: `curl -s http://localhost:9222/json | jq -r '.[0].webSocketDebuggerUrl'`
 4. ☐ Instruct user on what actions to perform
 5. ☐ Wait for user signal ("ready")
@@ -366,7 +366,7 @@ The orchestrator implements robust error detection with clear recovery guidance.
 #### 404 Hard-Stop (Remote URLs)
 
 ```bash
-./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "https://example.com/nonexistent"
+python3 -m scripts.cdp.cli.main orchestrate headless "https://example.com/nonexistent"
 
 # Output:
 ❌ URL validation failed - HARD STOP
@@ -389,7 +389,7 @@ The orchestrator implements robust error detection with clear recovery guidance.
 #### Localhost Lenient Validation
 
 ```bash
-./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000/signin"
+python3 -m scripts.cdp.cli.main orchestrate headed "http://localhost:3000/signin"
 
 # Output (for any HTTP status 200-599):
 🔍 Validating URL: http://localhost:3000/signin (localhost - lenient validation)
@@ -401,31 +401,26 @@ The orchestrator implements robust error detection with clear recovery guidance.
 - No `--skip-validation` flag needed for local development
 - Designed for dev servers that may return 404 for authenticated routes
 
-### Collector Script Validation
+### CLI Dependency Validation
 
 ```bash
-# If collector scripts are missing/moved
-./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "http://example.com"
+# If the CLI package is not installed
+cdp orchestrate headless https://example.com
 
 # Output:
-{
-  "status": "error",
-  "code": "COLLECTOR_MISSING",
-  "message": "Required collector script not found: /path/to/scripts/collectors/cdp-network.py",
-  "recovery": "Verify repository structure: ls -la /path/to/scripts/collectors/"
-}
+cdp: command not found
 ```
 
 **Key behaviors:**
-- All collector scripts validated before Chrome launch
-- Clear error message with missing script path
-- Recovery guidance provided
+- The repo supports both `cdp` entrypoint and `python3 -m scripts.cdp.cli.main`
+- If the entrypoint is missing, you can still run the module form without installation
+- `pip install -e .` makes the `cdp` command available system-wide
 
 ### Port Conflict Detection
 
 ```bash
 # If port 9222 is already in use
-./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000"
+python3 -m scripts.cdp.cli.main orchestrate headless "http://localhost:3000"
 
 # Output:
 ❌ Chrome launch failed
@@ -445,11 +440,11 @@ The orchestrator implements robust error detection with clear recovery guidance.
 
 ```bash
 # If Python websockets library is missing
-./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000" --include-console
+python3 -m scripts.cdp.cli.main orchestrate headed "http://localhost:3000" --include-console
 
 # Output:
 ❌ Console monitor failed to start
-   Command: python3 /path/to/scripts/collectors/cdp-console.py 12345 --port=9222
+   Command: python3 -m scripts.cdp.cli.main console stream --target 12345 --chrome-port 9222 --duration 30
    Check log: /tmp/page-debug-20251024-143522-12345-console.log
 
 💡 Recovery:
@@ -468,7 +463,7 @@ The orchestrator implements robust error detection with clear recovery guidance.
 For intentionally unreachable URLs (e.g., testing CDP behavior on invalid pages):
 
 ```bash
-./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "https://invalid-domain-12345.com" \
+python3 -m scripts.cdp.cli.main orchestrate headless "https://invalid-domain-12345.com" \
   --skip-validation --summary=both
 ```
 
@@ -494,14 +489,21 @@ PAGE_ID=$(curl -s "http://localhost:${PORT}/json" | jq -r '.[] | select(.type=="
 ### Monitor Console Output
 
 ```bash
-timeout 15 python3 scripts/collectors/cdp-console.py "$PAGE_ID" --port=${PORT} \
+timeout 15 python3 -m scripts.cdp.cli.main console stream \
+  --target "$PAGE_ID" \
+  --chrome-port ${PORT} \
+  --duration 30 \
   | jq 'del(.stackTrace)'   # trim stack traces if you only need messages
 ```
 
 ### Monitor Network Traffic
 
 ```bash
-timeout 15 python3 scripts/collectors/cdp-network.py "$PAGE_ID" --port=${PORT} > /tmp/network.log
+timeout 15 python3 -m scripts.cdp.cli.main network record \
+  --target "$PAGE_ID" \
+  --chrome-port ${PORT} \
+  --duration 30 \
+  --output /tmp/network.log
 ```
 
 Filter out noisy resources (e.g., blob URLs) during analysis:
@@ -513,8 +515,12 @@ jq 'select(.event == "request" and (.url | startswith("blob:") | not))' /tmp/net
 
 Capture response bodies for matching URLs:
 ```bash
-timeout 20 python3 scripts/collectors/cdp-network-with-body.py "$PAGE_ID" --port=${PORT} \
-  --filter=api/v1/orders > /tmp/network-with-bodies.log
+timeout 20 python3 -m scripts.cdp.cli.main network record \
+  --target "$PAGE_ID" \
+  --chrome-port ${PORT} \
+  --duration 30 \
+  --include-bodies \
+  --output /tmp/network-with-bodies.log
 ```
 
 ### Get DOM Snapshot
@@ -536,10 +542,16 @@ sleep 2
 PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[] | select(.type == "page") | .id' | head -1)
 
 # Step 4: Monitor console in background
-python3 scripts/collectors/cdp-console.py $PAGE_ID > /tmp/console.log &
+python3 -m scripts.cdp.cli.main console stream \
+  --target "$PAGE_ID" \
+  --duration 30 \
+  --output /tmp/console.log &
 
 # Step 5: Monitor network in background
-python3 scripts/collectors/cdp-network.py $PAGE_ID > /tmp/network.log &
+python3 -m scripts.cdp.cli.main network record \
+  --target "$PAGE_ID" \
+  --duration 30 \
+  --output /tmp/network.log &
 
 # Step 6: Wait for page activity (or use timeout)
 sleep 15
@@ -560,7 +572,7 @@ pkill -f "chrome.*9222"
 
 ```bash
 # Launch Chrome and save session info
-./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000" --mode=headed --include-console > /tmp/chrome-session.json
+python3 -m scripts.cdp.cli.main orchestrate headed "http://localhost:3000" --include-console > /tmp/chrome-session.json
 
 # Extract session details
 CHROME_PID=$(jq -r '.chrome_pid' /tmp/chrome-session.json)
@@ -584,7 +596,7 @@ If Chrome is already bound to port 9222, the orchestrator aborts after showing t
 pkill -f "chrome.*9222"
 
 # Or use alternate port
-./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "URL" --mode=headed --port=9223
+python3 -m scripts.cdp.cli.main orchestrate headed "URL" --chrome-port 9223
 ```
 
 ---
@@ -650,10 +662,13 @@ echo '{"id":3,"method":"Runtime.evaluate","params":{"expression":"window.locatio
 ```bash
 chrome --headless=new --remote-debugging-port=9222 https://example.com &
 sleep 2
-PAGE_ID=$(curl -s http://localhost:9222/json \
+ PAGE_ID=$(curl -s http://localhost:9222/json \
   | jq -r '.[] | select(.type == "page") | .id' \
   | head -1)
-timeout 10 python3 scripts/collectors/cdp-console.py $PAGE_ID | grep '"type":"error"'
+timeout 10 python3 -m scripts.cdp.cli.main console stream \
+  --target "$PAGE_ID" \
+  --duration 30 \
+  | grep '"type":"error"'
 pkill -f "chrome.*9222"
 ```
 
@@ -662,10 +677,13 @@ pkill -f "chrome.*9222"
 ```bash
 chrome --headless=new --remote-debugging-port=9222 https://example.com &
 sleep 2
-PAGE_ID=$(curl -s http://localhost:9222/json \
+ PAGE_ID=$(curl -s http://localhost:9222/json \
   | jq -r '.[] | select(.type == "page") | .id' \
   | head -1)
-timeout 10 python3 scripts/collectors/cdp-network.py $PAGE_ID | grep 'api.example.com'
+timeout 10 python3 -m scripts.cdp.cli.main network record \
+  --target "$PAGE_ID" \
+  --duration 30 \
+  | grep 'api.example.com'
 pkill -f "chrome.*9222"
 ```
 
@@ -704,17 +722,22 @@ sleep 2
 PAGE_ID=$(curl -s http://localhost:9222/json \
   | jq -r '.[] | select(.type == "page") | .id' \
   | head -1)
-python3 scripts/collectors/cdp-console.py $PAGE_ID
+python3 -m scripts.cdp.cli.main console stream --target "$PAGE_ID" --duration 30
 
 # Monitor network
-python3 scripts/collectors/cdp-network.py $PAGE_ID
+python3 -m scripts.cdp.cli.main network record --target "$PAGE_ID" --duration 30 --output /tmp/network.log
 
 # Monitor both (background)
-python3 scripts/collectors/cdp-console.py $PAGE_ID > /tmp/console.log &
-python3 scripts/collectors/cdp-network.py $PAGE_ID > /tmp/network.log &
+python3 -m scripts.cdp.cli.main console stream --target "$PAGE_ID" --duration 30 --output /tmp/console.log &
+python3 -m scripts.cdp.cli.main network record --target "$PAGE_ID" --duration 30 --output /tmp/network.log &
 
 # Orchestrated capture with summaries & idle detection
-./scripts/corpython3 -m scripts.cdp.cli.main orchestrate "$URL" 15 /tmp/network.log --include-console --summary=both --idle=2
+python3 -m scripts.cdp.cli.main orchestrate headless "$URL" \
+  --duration 15 \
+  --output-dir /tmp \
+  --console \
+  --summary both \
+  --skip-validation
 
 # Cleanup
 pkill -f "chrome.*9222"
@@ -724,18 +747,21 @@ pkill -f "chrome.*9222"
 
 ## Running Summaries After Capture
 
-`cdp-summarize.py` consumes any network/console log pair and prints aggregate stats.
+`cdp orchestrate` can emit JSON and text summaries automatically—no extra scripts required.
 
 ```bash
-python3 scripts/collectors/cdp-summarize.py \
-  --network /tmp/example.log \
-  --console /tmp/example-console.log \
-  --duration 20 \
-  --format both \
-  --include-console
+python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
+  --duration 30 \
+  --console \
+  --network \
+  --summary both \
+  --output-dir /tmp
+
+# Inspect JSON summary
+jq '.' /tmp/summary-*.json
 ```
 
-Expect totals, status histograms, a host breakdown, and the top 10 distinct request URLs. Pair this with ad-hoc `jq` filters for deeper dives.
+Summaries include request counts, error totals, artifact paths, and timestamps. Combine them with `jq` filters for deeper analysis.
 
 ---
 
@@ -750,4 +776,3 @@ Expect totals, status histograms, a host breakdown, and the top 10 distinct requ
 ## Recent Updates
 
 **2025-10-24**: Added graceful session cleanup (SIGINT trap), unique session file naming, and enhanced error handling sections. Updated to reflect 006-fix-orchestrator-paths feature improvements.
-

@@ -49,7 +49,7 @@ See [../scripts/README.md](../scripts/README.md) for script documentation:
 
 | Task | Document |
 |------|----------|
-| Launch Chrome in headed mode | [guides/workflow-guide.md](guides/workflow-guide.md) |
+| Launch Chrome in headed mode | [guides/workflows.md](guides/workflows.md) |
 | Extract DOM from live page | [reference/cdp-commands.md](reference/cdp-commands.md) → Runtime.evaluate |
 | Capture network request bodies | [guides/filter-flag-guide.md](guides/filter-flag-guide.md) |
 | Fix "CDP connection blocked" | [guides/chrome-136-incident.md](guides/chrome-136-incident.md) |

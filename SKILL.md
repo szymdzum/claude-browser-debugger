@@ -78,7 +78,7 @@ Use when you need to debug JavaScript errors or see console output.
 
 **Single Command:**
 ```bash
-python3 -m scripts.cdp.cli.main console https://example.com \
+python3 -m scripts.cdp.cli.main console stream --url https://example.com \
   --duration 30 \
   --output /tmp/console.jsonl
 ```
@@ -86,7 +86,7 @@ python3 -m scripts.cdp.cli.main console https://example.com \
 **With filtering:**
 ```bash
 # Only capture warnings and errors
-python3 -m scripts.cdp.cli.main console https://example.com \
+python3 -m scripts.cdp.cli.main console stream --url https://example.com \
   --duration 30 \
   --level warn \
   --output /tmp/console.jsonl
@@ -104,7 +104,7 @@ Output format (JSONL):
 
 **Basic Network Monitoring:**
 ```bash
-python3 -m scripts.cdp.cli.main network https://example.com \
+python3 -m scripts.cdp.cli.main network record --url https://example.com \
   --duration 30 \
   --output /tmp/network.json
 ```
@@ -112,7 +112,7 @@ python3 -m scripts.cdp.cli.main network https://example.com \
 **With Response Bodies:**
 ```bash
 # Capture response bodies (useful for API debugging)
-python3 -m scripts.cdp.cli.main network https://example.com \
+python3 -m scripts.cdp.cli.main network record --url https://example.com \
   --duration 30 \
   --include-bodies \
   --output /tmp/network.json
@@ -136,7 +136,7 @@ The `orchestrate` command coordinates all debugging activities in one command: C
 
 **Headless mode** (automated, no UI):
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate https://example.com/login \
+python3 -m scripts.cdp.cli.main orchestrate headless https://example.com/login \
   --duration 20 \
   --console \
   --network \
@@ -146,8 +146,7 @@ python3 -m scripts.cdp.cli.main orchestrate https://example.com/login \
 
 **Headed mode** (visible browser for manual testing):
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate http://localhost:3000/checkout \
-  --mode headed \
+python3 -m scripts.cdp.cli.main orchestrate headed http://localhost:3000/checkout \
   --duration 20 \
   --console \
   --network \
@@ -225,8 +224,7 @@ Launch visible Chrome for manual testing, then extract DOM state after user inte
 
 **Automated Workflow (Recommended):**
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate http://localhost:3000/signin \
-  --mode headed \
+python3 -m scripts.cdp.cli.main orchestrate headed http://localhost:3000/signin \
   --duration 60 \
   --console \
   --network
@@ -357,7 +355,7 @@ WS_URL=$(curl -s http://localhost:9222/json | jq -r '.[] | select(.type == "page
 
 **Solution:** Use the Python CLI `orchestrate` command (handles this automatically):
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate URL --mode headed
+python3 -m scripts.cdp.cli.main orchestrate headed "$URL"
 ```
 
 If launching manually:
@@ -402,13 +400,13 @@ chrome --headless=new --dump-dom $URL
 python3 -m scripts.cdp.cli.main dom $URL --output /tmp/dom.html
 
 # Monitor console logs
-python3 -m scripts.cdp.cli.main console $URL --duration 30 --output /tmp/console.jsonl
+python3 -m scripts.cdp.cli.main console stream --url $URL --duration 30 --output /tmp/console.jsonl
 
 # Monitor network traffic
-python3 -m scripts.cdp.cli.main network $URL --duration 30 --include-bodies --output /tmp/network.json
+python3 -m scripts.cdp.cli.main network record --url $URL --duration 30 --include-bodies --output /tmp/network.json
 
 # Full workflow orchestration (recommended)
-python3 -m scripts.cdp.cli.main orchestrate $URL \
+python3 -m scripts.cdp.cli.main orchestrate headless $URL \
   --duration 30 \
   --console \
   --network \
@@ -416,8 +414,7 @@ python3 -m scripts.cdp.cli.main orchestrate $URL \
   --output /tmp/debug
 
 # Headed mode (interactive debugging)
-python3 -m scripts.cdp.cli.main orchestrate $URL \
-  --mode headed \
+python3 -m scripts.cdp.cli.main orchestrate headed $URL \
   --console \
   --network
 
@@ -436,7 +433,7 @@ pkill -f "chrome.*9222"
 ### Example: Find all console errors on a page
 
 ```bash
-python3 -m scripts.cdp.cli.main console https://example.com \
+python3 -m scripts.cdp.cli.main console stream --url https://example.com \
   --duration 10 \
   --level error \
   --output /tmp/errors.jsonl
@@ -445,7 +442,7 @@ python3 -m scripts.cdp.cli.main console https://example.com \
 ### Example: Check if a page makes API calls to a specific domain
 
 ```bash
-python3 -m scripts.cdp.cli.main network https://example.com \
+python3 -m scripts.cdp.cli.main network record --url https://example.com \
   --duration 10 \
   --output /tmp/network.json
 
@@ -464,7 +461,7 @@ python3 -m scripts.cdp.cli.main eval https://example.com \
 ### Example: Full debugging session with all telemetry
 
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate https://example.com \
+python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
   --duration 30 \
   --console \
   --network \

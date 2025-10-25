@@ -168,8 +168,8 @@ PORT=$(echo "$LAUNCHER_OUTPUT" | jq -r '.port')
 PAGE_ID=$(echo "$LAUNCHER_OUTPUT" | jq -r '.page_id')
 CHROME_PID=$(echo "$LAUNCHER_OUTPUT" | jq -r '.pid')
 
-# Pass to collectors
-python3 cdp-console.py "$PAGE_ID" --port="$PORT"
+# Pass to CLI collectors
+python3 -m scripts.cdp.cli.main console stream --target "$PAGE_ID" --chrome-port "$PORT" --duration 30
 ```
 
 ## Testing Error Conditions

@@ -19,24 +19,36 @@ The `--filter` flag enables **selective body capture** for requests matching a p
 ### Syntax
 
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate "URL" DURATION OUTPUT --filter=PATTERN
+python3 -m scripts.cdp.cli.main orchestrate headless "URL" \
+  --duration DURATION \
+  --output-dir OUTPUT \
+  --filter PATTERN
 ```
 
 ### Examples
 
 **Capture marketing API responses:**
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000" 30 /tmp/test.log --filter=marketing
+python3 -m scripts.cdp.cli.main orchestrate headed "http://localhost:3000" \
+  --duration 30 \
+  --output-dir /tmp \
+  --filter marketing
 ```
 
 **Capture all /api/ endpoints:**
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000" 30 /tmp/test.log --filter=api
+python3 -m scripts.cdp.cli.main orchestrate headless "http://localhost:3000" \
+  --duration 30 \
+  --output-dir /tmp \
+  --filter api
 ```
 
 **Capture specific endpoint:**
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000" 30 /tmp/test.log --filter=customer/register
+python3 -m scripts.cdp.cli.main orchestrate headless "http://localhost:3000" \
+  --duration 30 \
+  --output-dir /tmp \
+  --filter customer/register
 ```
 
 ---
@@ -171,10 +183,16 @@ python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000" 30 /tmp/test
 
 ```bash
 # Session 1: Capture marketing
-python3 -m scripts.cdp.cli.main orchestrate URL 30 /tmp/marketing.log --filter=marketing
+python3 -m scripts.cdp.cli.main orchestrate headless "$URL" \
+  --duration 30 \
+  --output-dir /tmp/marketing \
+  --filter marketing
 
 # Session 2: Capture customer
-python3 -m scripts.cdp.cli.main orchestrate URL 30 /tmp/customer.log --filter=customer
+python3 -m scripts.cdp.cli.main orchestrate headless "$URL" \
+  --duration 30 \
+  --output-dir /tmp/customer \
+  --filter customer
 ```
 
 ### Exclude Pattern (NOT Logic)
@@ -190,8 +208,11 @@ python3 -m scripts.cdp.cli.main orchestrate URL 30 /tmp/customer.log --filter=cu
 ### Debug Failed Login API
 
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000/login" 60 /tmp/login-debug.log \
-  --filter=auth/login --include-console
+python3 -m scripts.cdp.cli.main orchestrate headed "http://localhost:3000/login" \
+  --duration 60 \
+  --output-dir /tmp/login-debug \
+  --filter auth/login \
+  --include-console
 ```
 
 **Why:** Captures auth endpoint body + console errors
@@ -201,8 +222,11 @@ python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000/login" 60 /tm
 ### Investigate Missing Customer Data
 
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000/dashboard" 120 /tmp/customer-debug.log \
-  --filter=customer --mode=headed --include-console
+python3 -m scripts.cdp.cli.main orchestrate headed "http://localhost:3000/dashboard" \
+  --duration 120 \
+  --output-dir /tmp/customer-debug \
+  --filter customer \
+  --include-console
 ```
 
 **Why:** Captures all customer API responses during manual interaction
@@ -212,8 +236,11 @@ python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000/dashboard" 12
 ### Performance Test API Endpoint
 
 ```bash
-python3 -m scripts.cdp.cli.main orchestrate "http://localhost:3000/api-test" 30 /tmp/perf.log \
-  --filter=/v1/products --idle=5
+python3 -m scripts.cdp.cli.main orchestrate headless "http://localhost:3000/api-test" \
+  --duration 30 \
+  --output-dir /tmp/perf \
+  --filter /v1/products \
+  --idle 5
 ```
 
 **Why:** Captures response times + body sizes for specific endpoint

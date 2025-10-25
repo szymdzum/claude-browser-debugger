@@ -113,23 +113,6 @@ if [ -n "$PORT_PIDS" ]; then
     sleep 1
 fi
 
-# CDP Collector Cleanup
-echo "Cleaning up CDP collectors..." >&2
-CDP_CONSOLE_PIDS=$(pgrep -f "cdp-console.py" 2>/dev/null || true)
-CDP_NETWORK_PIDS=$(pgrep -f "cdp-network.py" 2>/dev/null || true)
-CDP_OTHER_PIDS=$(pgrep -f "cdp-.*\.py" 2>/dev/null || true)
-
-for PID in $CDP_CONSOLE_PIDS $CDP_NETWORK_PIDS $CDP_OTHER_PIDS; do
-    if [ -n "$PID" ]; then
-        echo "  Killing CDP collector PID $PID" >&2
-        kill -9 "$PID" 2>/dev/null || true
-        # Add to KILLED_PIDS if not already present
-        if [[ ! " ${KILLED_PIDS[@]} " =~ " ${PID} " ]]; then
-            KILLED_PIDS+=("$PID")
-        fi
-    fi
-done
-
 # ============================================================================
 # Final Verification
 # ============================================================================

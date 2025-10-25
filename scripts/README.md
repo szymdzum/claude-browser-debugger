@@ -23,7 +23,7 @@ The main interface for all CDP operations. Use via `python3 -m scripts.cdp.cli.m
 | **dom** | Extract DOM from a page | `cdp dom dump --url example.com --output dom.html` |
 | **console** | Stream console logs | `cdp console stream --url example.com --duration 30` |
 | **network** | Record network activity | `cdp network record --url example.com --duration 30 --output network.jsonl` |
-| **orchestrate** | Run automated debugging workflow | `cdp orchestrate --mode headed --url example.com --console --network` |
+| **orchestrate** | Run automated debugging workflow | `cdp orchestrate headless https://example.com --console --network` |
 | **query** | Execute arbitrary CDP command | `cdp query --url example.com --method Runtime.evaluate --params '{"expression":"2+2"}'` |
 
 ### Quick Examples
@@ -45,10 +45,11 @@ python3 -m scripts.cdp.cli.main console stream --url https://example.com --durat
 python3 -m scripts.cdp.cli.main network record --url https://example.com --duration 30 --output network.jsonl
 
 # Full orchestrated workflow (headless)
-python3 -m scripts.cdp.cli.main orchestrate --url https://example.com --console --network --summary both
+python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
+  --console --network --summary both
 
 # Interactive debugging (headed mode)
-python3 -m scripts.cdp.cli.main orchestrate --mode headed --url http://localhost:3000 --console
+python3 -m scripts.cdp.cli.main orchestrate headed http://localhost:3000 --console
 ```
 
 ### Installation
@@ -59,7 +60,7 @@ After running `./install.sh`, the CLI is available as `cdp`:
 # Shorter command after installation
 cdp session list --type page
 cdp eval --url example.com "document.title"
-cdp orchestrate --mode headed --url example.com
+cdp orchestrate headless https://example.com --console --network
 ```
 
 ---
@@ -173,9 +174,7 @@ python3 -m scripts.cdp.cli.main dom dump --url https://example.com --output dom.
 
 ```bash
 # Launch visible browser for manual interaction
-python3 -m scripts.cdp.cli.main orchestrate \
-  --mode headed \
-  --url http://localhost:3000 \
+python3 -m scripts.cdp.cli.main orchestrate headed http://localhost:3000 \
   --console \
   --duration 600
 

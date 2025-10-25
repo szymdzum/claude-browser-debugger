@@ -29,7 +29,7 @@ if [ -z "$WS_URL" ] || [ "$WS_URL" = "null" ]; then
     echo ""
     echo "=� Recovery:"
     echo "   - Start Chrome with CDP: chrome --remote-debugging-port=$PORT"
-    echo "   - Or use: python3 -m scripts.cdp.cli.main orchestrate --mode headed <URL>"
+    echo "   - Or use: python3 -m scripts.cdp.cli.main orchestrate headed <URL>"
     echo ""
 
     # Generate error summary.json

@@ -276,7 +276,10 @@ sleep 2
 PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[] | select(.type == "page") | .id' | head -1)
 
 # Step 3: Monitor network
-python3 scripts/collectors/cdp-network.py $PAGE_ID
+python3 -m scripts.cdp.cli.main network record \
+  --target "$PAGE_ID" \
+  --duration 30 \
+  --output /tmp/network.jsonl
 ```
 
 ### Network Event Formats
@@ -315,9 +318,12 @@ python3 scripts/collectors/cdp-network.py $PAGE_ID
 ### Capture Response Bodies
 
 ```bash
-# Filter and capture response bodies for specific URLs
-timeout 20 python3 scripts/collectors/cdp-network-with-body.py "$PAGE_ID" --port=9222 \
-  --filter="api/v1" > /tmp/network-with-bodies.log
+# Capture response bodies directly via CLI
+python3 -m scripts.cdp.cli.main network record \
+  --target "$PAGE_ID" \
+  --duration 30 \
+  --include-bodies \
+  --output /tmp/network-with-bodies.jsonl
 ```
 
 ### Filter Network Events
@@ -351,7 +357,10 @@ sleep 2
 PAGE_ID=$(curl -s http://localhost:9222/json | jq -r '.[] | select(.type == "page") | .id' | head -1)
 
 # Step 3: Monitor console
-python3 scripts/collectors/cdp-console.py $PAGE_ID
+python3 -m scripts.cdp.cli.main console stream \
+  --target "$PAGE_ID" \
+  --duration 30 \
+  --output /tmp/console.jsonl
 ```
 
 ### Console Event Formats
@@ -381,14 +390,19 @@ python3 scripts/collectors/cdp-console.py $PAGE_ID
 ### Navigate After Connecting
 
 ```bash
-# Monitor console and navigate to different URL
-python3 scripts/collectors/cdp-console.py $PAGE_ID https://different-url.com
+# Monitor console output for a specific URL (first matching page target)
+python3 -m scripts.cdp.cli.main console stream \
+  --url https://different-url.com \
+  --duration 30
 ```
 
 ### Use Custom Port
 
 ```bash
-python3 scripts/collectors/cdp-console.py $PAGE_ID https://example.com --port=9223
+python3 -m scripts.cdp.cli.main console stream \
+  --url https://example.com \
+  --chrome-port 9223 \
+  --duration 30
 ```
 
 ### Filter Console Events
