@@ -28,10 +28,9 @@ Here's what the Python CDP CLI produces when monitoring a page:
 ```bash
 python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
   --duration 15 \
-  --output /tmp/output.log \
-  --console \
-  --network \
-  --summary both
+  --output-dir /tmp \
+  --include-console \
+  --summary=both
 ```
 <details>
 <summary>Sample output</summary>
@@ -180,10 +179,9 @@ For command-line testing:
 ```bash
 python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
   --duration 15 \
-  --output /tmp/output.log \
-  --console \
-  --network \
-  --summary both
+  --output-dir /tmp \
+  --include-console \
+  --summary=both
 ```
 This produces network timelines, console output, and both JSON and human-readable summaries.
 
@@ -283,10 +281,8 @@ This skill handles Chrome 136+ profile isolation requirements automatically. For
 # Full orchestration with all collectors
 python3 -m scripts.cdp.cli.main orchestrate headless https://example.com \
   --duration 30 \
-  --console \
-  --network \
-  --include-bodies \
-  --summary both
+  --include-console \
+  --summary=both
 
 # Console monitoring only
 python3 -m scripts.cdp.cli.main console stream --url https://example.com \
@@ -347,7 +343,7 @@ python3 -m scripts.cdp.cli.main console stream --url https://example.com --durat
 python3 -m scripts.cdp.cli.main network record --url https://example.com --duration 30 --output network.json
 
 # Full workflow
-python3 -m scripts.cdp.cli.main orchestrate headless https://example.com --console --network --summary both
+python3 -m scripts.cdp.cli.main orchestrate headless https://example.com --include-console --summary=both
 ```
 
 ### Documentation
