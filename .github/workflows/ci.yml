@@ -106,14 +106,14 @@ jobs:
       - name: CLI smoke tests (no Chrome required)
         run: |
           # Test all 7 subcommands show help text
-          python -m scripts.cdp.cli --help
-          python -m scripts.cdp.cli session --help
-          python -m scripts.cdp.cli eval --help
-          python -m scripts.cdp.cli dom --help
-          python -m scripts.cdp.cli console --help
-          python -m scripts.cdp.cli network --help
-          python -m scripts.cdp.cli orchestrate --help
-          python -m scripts.cdp.cli query --help
+          python -m scripts.cdp.cli.main --help
+          python -m scripts.cdp.cli.main session --help
+          python -m scripts.cdp.cli.main eval --help
+          python -m scripts.cdp.cli.main dom --help
+          python -m scripts.cdp.cli.main console --help
+          python -m scripts.cdp.cli.main network --help
+          python -m scripts.cdp.cli.main orchestrate --help
+          python -m scripts.cdp.cli.main query --help
 
   # Optional: PR comment on test failure
   comment-on-failure:
@@ -121,6 +121,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, lint, typecheck, smoke-tests]
     if: failure() && github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
     steps:
       - uses: marocchino/sticky-pull-request-comment@v2
         with:
