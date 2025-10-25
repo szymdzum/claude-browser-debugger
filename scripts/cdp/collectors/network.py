@@ -149,7 +149,7 @@ class NetworkCollector:
         response = params.get("response", {})
 
         # Get matching request
-        request_data = self._requests.get(request_id, {})
+        request_data = self._requests.get(request_id, {}) if request_id is not None else {}
 
         # Build entry
         entry = {
@@ -208,7 +208,7 @@ class NetworkCollector:
             params: CDP event parameters
         """
         request_id = params.get("requestId")
-        request_data = self._requests.get(request_id, {})
+        request_data = self._requests.get(request_id, {}) if request_id is not None else {}
 
         # Log failure
         entry = {
