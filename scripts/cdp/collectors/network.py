@@ -127,14 +127,15 @@ class NetworkCollector:
         request_id = params.get("requestId")
         request = params.get("request", {})
 
-        # Store request for matching
-        self._requests[request_id] = {
-            "requestId": request_id,
-            "url": request.get("url", ""),
-            "method": request.get("method", ""),
-            "timestamp": params.get("timestamp", 0),
-            "type": params.get("type", ""),
-        }
+        # Store request for matching (only if we have a valid request_id)
+        if request_id is not None:
+            self._requests[request_id] = {
+                "requestId": request_id,
+                "url": request.get("url", ""),
+                "method": request.get("method", ""),
+                "timestamp": params.get("timestamp", 0),
+                "type": params.get("type", ""),
+            }
 
     async def _on_response(self, params: dict):
         """
