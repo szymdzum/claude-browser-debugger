@@ -1,6 +1,6 @@
 # Chrome Launcher Contract
 
-This document defines the interface contract between `chrome-launcher.sh` and `debug-orchestrator.sh`.
+This document defines the interface contract between `chrome-launcher.sh` and the Python orchestrator.
 
 ## Purpose
 
