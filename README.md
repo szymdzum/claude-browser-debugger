@@ -1,5 +1,10 @@
 # ⚡️ Claude Browser Debugger Skill
 
+[![CI](https://img.shields.io/github/actions/workflow/status/szymdzum/claude-browser-debugger/ci.yml?branch=main&label=CI&logo=github)](https://github.com/szymdzum/claude-browser-debugger/actions/workflows/ci.yml)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/github/license/szymdzum/claude-browser-debugger)](LICENSE)
+[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 A lightweight Chrome DevTools Protocol (CDP) skill for Claude Code that provides browser inspection capabilities without the overhead of full MCP implementations. Built on CDP fundamentals with `websocat` and minimal dependencies, this skill launches Chrome on demand and streams DOM structure, console logs, and network activity directly to Claude.
 
 Designed as a streamlined alternative to dev-tools-mcp, it focuses on quick telemetry capture for common debugging workflows while keeping dependencies minimal and startup fast.

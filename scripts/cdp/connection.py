@@ -11,7 +11,7 @@ from typing import Any, Callable, Awaitable, Dict, List, Optional, Set
 
 try:
     import websockets
-    from websockets.client import WebSocketClientProtocol
+    from websockets.legacy.client import WebSocketClientProtocol  # type: ignore[attr-defined]
     from websockets.exceptions import ConnectionClosed
 except ImportError:
     raise ImportError(
@@ -101,7 +101,7 @@ class CDPConnection:
         """
         try:
             logger.info(f"Connecting to {self.ws_url}")
-            self._ws = await websockets.connect(self.ws_url, max_size=self.max_size)
+            self._ws = await websockets.connect(self.ws_url, max_size=self.max_size)  # type: ignore[assignment]
             self._is_connected = True
             self._receive_task = asyncio.create_task(self._receive_loop())
             logger.info("CDP connection established")
@@ -268,7 +268,7 @@ class CDPConnection:
         message = json.dumps({"id": cmd_id, "method": method, "params": params or {}})
 
         try:
-            await self._ws.send(message)
+            await self._ws.send(message)  # type: ignore[union-attr]
             logger.debug(f"Sent command {cmd_id}: {method}")
 
             # Wait for response with timeout
@@ -328,7 +328,7 @@ class CDPConnection:
         Handles malformed messages and connection errors gracefully.
         """
         try:
-            async for message in self._ws:
+            async for message in self._ws:  # type: ignore[union-attr]
                 try:
                     data = json.loads(message)
 
@@ -364,7 +364,7 @@ class CDPConnection:
                         for handler in handlers:
                             try:
                                 # Run handler as background task (non-blocking)
-                                asyncio.create_task(handler(params))
+                                asyncio.create_task(handler(params))  # type: ignore[arg-type]
                             except Exception as e:
                                 # Isolate handler errors (Principle 6: Diagnostic Transparency)
                                 logger.error(

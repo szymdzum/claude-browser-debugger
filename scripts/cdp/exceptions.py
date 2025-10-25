@@ -33,8 +33,6 @@ class CDPConnectionError(CDPError):
     Raised when establishing or maintaining CDP WebSocket connection fails.
     """
 
-    pass
-
 
 class ConnectionFailedError(CDPConnectionError):
     """Initial connection failed.
@@ -43,8 +41,6 @@ class ConnectionFailedError(CDPConnectionError):
     Common causes: wrong port, Chrome not running, network issues.
     """
 
-    pass
-
 
 class ConnectionClosedError(CDPConnectionError):
     """Connection closed unexpectedly.
@@ -52,8 +48,6 @@ class ConnectionClosedError(CDPConnectionError):
     Raised when WebSocket connection is closed unexpectedly.
     Common causes: Chrome crash, network interruption, manual closure.
     """
-
-    pass
 
 
 class CDPCommandError(CDPError):
@@ -81,8 +75,6 @@ class CommandFailedError(CDPCommandError):
     Example: invalid JavaScript expression in Runtime.evaluate
     """
 
-    pass
-
 
 class InvalidCommandError(CDPCommandError):
     """Malformed command.
@@ -90,8 +82,6 @@ class InvalidCommandError(CDPCommandError):
     Raised when command is invalid before sending to Chrome.
     Example: missing required parameters, invalid method name.
     """
-
-    pass
 
 
 class CDPTimeoutError(CDPError):
